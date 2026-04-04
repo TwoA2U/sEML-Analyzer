@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EML Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0c0f;
+    --surface:   #111318;
+    --border:    #1e2229;
+    --border2:   #2a2f3a;
+    --accent:    #00d4aa;
+    --accent2:   #0099ff;
+    --warn:      #ffaa00;
+    --danger:    #ff4455;
+    --text:      #c8d0dc;
+    --text-dim:  #5a6370;
+    --text-bright: #e8edf5;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ── Layout ── */
+  .app {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    font-size: 16px;
+    position: relative;
+  }
+
+  .logo-icon::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid var(--accent);
+    opacity: 0.3;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tagline {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    margin-left: auto;
+    text-transform: uppercase;
+  }
+
+  /* ── Tab bar ── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 10px 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .tab:hover { color: var(--text); }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Input areas ── */
+  .input-zone {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 24px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .zone-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .zone-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Drop zone */
+  .dropzone {
+    border: 1px dashed var(--border2);
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(0,212,170,0.03);
+  }
+
+  .dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+    color: var(--text-dim);
+  }
+
+  .drop-title {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .drop-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .file-loaded {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(0,212,170,0.06);
+    border: 1px solid rgba(0,212,170,0.2);
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  /* Textarea */
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 14px;
+    resize: vertical;
+    min-height: 200px;
+    line-height: 1.7;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: var(--border2); }
+  textarea::placeholder { color: var(--text-dim); }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 22px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #00bfa0; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text-dim);
+  }
+
+  .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+
+  /* ── Results ── */
+  #results { display: none; animation: fadeIn 0.3s ease; }
+  #results.visible { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .results-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .badge-ok    { background: rgba(0,212,170,0.1);  color: var(--accent); }
+  .badge-warn  { background: rgba(255,170,0,0.1);  color: var(--warn);   }
+  .badge-error { background: rgba(255,68,85,0.1);  color: var(--danger); }
+
+  /* Summary strip */
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 24px;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    padding: 16px 18px;
+  }
+
+  .summary-card .label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .summary-card .value {
+    font-size: 13px;
+    color: var(--text-bright);
+    word-break: break-all;
+  }
+
+  .summary-card .value.accent  { color: var(--accent); }
+  .summary-card .value.warn    { color: var(--warn); }
+  .summary-card .value.danger  { color: var(--danger); }
+
+  /* Section blocks */
+  .section {
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .section-head:hover { background: #13161c; }
+
+  .section-name {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-count {
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--border);
+    padding: 1px 7px;
+  }
+
+  .chevron {
+    color: var(--text-dim);
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+
+  .section.collapsed .chevron { transform: rotate(-90deg); }
+  .section.collapsed .section-body { display: none; }
+
+  .section-body { padding: 0; }
+
+  /* Table */
+  .kv-table { width: 100%; border-collapse: collapse; }
+
+  .kv-table tr { border-bottom: 1px solid var(--border); }
+  .kv-table tr:last-child { border-bottom: none; }
+  .kv-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+  .kv-table td {
+    padding: 9px 16px;
+    vertical-align: top;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .kv-table td:first-child {
+    width: 200px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+  }
+
+  .kv-table td:last-child {
+    color: var(--text-bright);
+    word-break: break-word;
+  }
+
+  /* Received chain */
+  .hop {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .hop:last-child { border-bottom: none; }
+
+  .hop-num {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .hop-content { font-size: 11px; }
+  .hop-raw { color: var(--text-dim); word-break: break-all; margin-bottom: 4px; }
+  .hop-delay { color: var(--warn); font-size: 10px; }
+
+  /* Auth results */
+  .auth-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .auth-row:last-child { border-bottom: none; }
+
+  .auth-name {
+    width: 60px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .pill {
+    padding: 2px 9px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .pill-pass { background: rgba(0,212,170,0.12); color: var(--accent); }
+  .pill-fail { background: rgba(255,68,85,0.12);  color: var(--danger); }
+  .pill-none { background: rgba(90,99,112,0.2);   color: var(--text-dim); }
+
+  .auth-detail { color: var(--text-dim); font-size: 11px; word-break: break-all; }
+
+  /* Attachments */
+  .attach-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .attach-row:last-child { border-bottom: none; }
+  .attach-icon { color: var(--accent2); font-size: 16px; }
+  .attach-name { color: var(--text-bright); flex: 1; }
+  .attach-size { color: var(--text-dim); font-size: 11px; }
+  .attach-type { color: var(--text-dim); font-size: 10px; letter-spacing: 0.05em; }
+
+  /* Raw headers */
+  .raw-block {
+    background: var(--bg);
+    padding: 16px;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+
+  .raw-block .h-name { color: var(--accent2); }
+  .raw-block .h-val  { color: var(--text); }
+
+  /* Error state */
+  .error-box {
+    border: 1px solid rgba(255,68,85,0.3);
+    background: rgba(255,68,85,0.05);
+    padding: 16px 20px;
+    color: var(--danger);
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">✉</div>
+      <h1>EML Analyzer</h1>
+    </div>
+    <span class="tagline">Email Forensics Tool</span>
+  </header>
+
+  <!-- Input tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('file', this)">Upload .eml File</button>
+    <button class="tab" onclick="switchTab('text', this)">Paste Headers / Raw</button>
+  </div>
+
+  <!-- File tab -->
+  <div id="tab-file" class="tab-panel active">
+    <div class="input-zone">
+      <div class="zone-label">EML File</div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".eml,.msg,message/rfc822,text/plain">
+        <div class="drop-icon">📂</div>
+        <div class="drop-title">Drop your .eml file here</div>
+        <div class="drop-sub">or click to browse</div>
+      </div>
+      <div id="file-loaded" style="display:none" class="file-loaded">
+        <span>📄</span>
+        <span id="file-name"></span>
+        <span id="file-size" style="margin-left:auto;color:var(--text-dim);font-size:11px;"></span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="analyzeFile()">Analyze</button>
+      <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+    </div>
+  </div>
+
+  <!-- Text tab -->
+  <div id="tab-text" class="tab-panel">
+    <div class="input-zone">
+      <div class="zone-label">Raw Headers or Full EML</div>
+      <textarea id="rawInput" placeholder="Paste raw email headers or full EML content here...
+
+From: sender@example.com
+To: recipient@example.com
+Subject: Test Email
+Date: Mon, 1 Jan 2025 12:00:00 +0000
+Received: from mail.example.com ...
+Authentication-Results: spf=pass dkim=pass dmarc=pass
+..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="analyzeText()">Analyze</button>
+      <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div style="height:32px"></div>
+    <div class="results-header">
+      <span class="results-title">Analysis Results</span>
+      <span id="parse-status" class="badge badge-ok">● Parsed OK</span>
+    </div>
+
+    <div id="error-box" class="error-box" style="display:none"></div>
+
+    <!-- Summary strip -->
+    <div class="summary-strip" id="summary-strip"></div>
+
+    <!-- Sections -->
+    <div id="sections-container"></div>
+  </div>
+
+</div>
+
+<script>
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ── File handling ─────────────────────────────────────────────────────────────
+let loadedFileContent = null;
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+});
+
+function loadFile(f) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    loadedFileContent = e.target.result;
+    dropzone.style.display = 'none';
+    const fl = document.getElementById('file-loaded');
+    fl.style.display = 'flex';
+    document.getElementById('file-name').textContent = f.name;
+    document.getElementById('file-size').textContent = formatBytes(f.size);
+  };
+  reader.readAsText(f);
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+// ── Entry points ──────────────────────────────────────────────────────────────
+function analyzeFile() {
+  if (!loadedFileContent) { alert('Please select an .eml file first.'); return; }
+  runAnalysis(loadedFileContent);
+}
+
+function analyzeText() {
+  const raw = document.getElementById('rawInput').value.trim();
+  if (!raw) { alert('Please paste some header or EML content first.'); return; }
+  runAnalysis(raw);
+}
+
+function clearAll() {
+  loadedFileContent = null;
+  fileInput.value = '';
+  dropzone.style.display = 'block';
+  document.getElementById('file-loaded').style.display = 'none';
+  document.getElementById('rawInput').value = '';
+  document.getElementById('results').classList.remove('visible');
+}
+
+// ── Core parser ───────────────────────────────────────────────────────────────
+function parseHeaders(raw) {
+  // Unfold multi-line header values (RFC 5322)
+  const unfolded = raw.replace(/\r\n([ \t])/g, ' $1').replace(/\n([ \t])/g, ' $1');
+
+  const headers = {};   // name (lowercase) → array of values
+  const lines = unfolded.split(/\r?\n/);
+  let bodyStart = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim() === '') { bodyStart = i + 1; break; }
+    const m = line.match(/^([A-Za-z0-9\-]+)\s*:\s*(.*)/);
+    if (m) {
+      const key = m[1].toLowerCase();
+      if (!headers[key]) headers[key] = [];
+      headers[key].push(m[2].trim());
+    }
+  }
+
+  const body = bodyStart >= 0 ? lines.slice(bodyStart).join('\n') : '';
+  return { headers, body, raw: unfolded };
+}
+
+function first(headers, key) {
+  return (headers[key] || [])[0] || '';
+}
+
+function all(headers, key) {
+  return headers[key] || [];
+}
+
+// Parse authentication-results header
+function parseAuthResults(val) {
+  const checks = [];
+
+  // Normalize whitespace (like Python version)
+  val = val.replace(/\s+/g, ' ').trim();
+
+  const protos = ['spf', 'dkim', 'dmarc', 'arc'];
+
+  protos.forEach((proto) => {
+    const regex = new RegExp(
+      `(?<![a-z])${proto}\\s*=\\s*(pass|fail|softfail|neutral|none|temperror|permerror)`,
+      'i'
+    );
+
+    const m = val.match(regex);
+
+    if (m) {
+      checks.push({
+        name: proto.toUpperCase(),
+        result: m[1].toLowerCase(),
+        raw: val
+      });
+    }
+  });
+
+  return checks;
+}
+
+// Parse received hops and compute delays
+function parseReceived(receivedList) {
+  const hops = receivedList.map(r => {
+    const dateMatch = r.match(/;\s*(.+)$/);
+    let date = null, delay = null;
+    if (dateMatch) {
+      const d = new Date(dateMatch[1].trim());
+      if (!isNaN(d)) date = d;
+    }
+    return { raw: r.trim(), date };
+  }).reverse(); // oldest first
+
+  for (let i = 1; i < hops.length; i++) {
+    if (hops[i].date && hops[i-1].date) {
+      const diff = Math.round((hops[i].date - hops[i-1].date) / 1000);
+      hops[i].delay = diff;
+    }
+  }
+  return hops.reverse(); // newest first for display
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function runAnalysis(raw) {
+  const { headers, body } = parseHeaders(raw);
+
+  // Basic fields
+  const from       = first(headers, 'from');
+  const to         = first(headers, 'to');
+  const cc         = first(headers, 'cc');
+  const subject    = first(headers, 'subject');
+  const date       = first(headers, 'date');
+  const messageId  = first(headers, 'message-id');
+  const replyTo    = first(headers, 'reply-to');
+  const xMailer    = first(headers, 'x-mailer');
+  const xOriginIp  = first(headers, 'x-originating-ip') || first(headers, 'x-sender-ip') || first(headers, 'x-source-ip');
+  const contentType = first(headers, 'content-type');
+  const mimeVer    = first(headers, 'mime-version');
+  const receivedList = all(headers, 'received');
+  const authRaw    = first(headers, 'authentication-results');
+  const authChecks = authRaw ? parseAuthResults(authRaw) : [];
+  const hops       = parseReceived(receivedList);
+
+  // Check for reply-to mismatch (phishing indicator)
+  const fromEmail   = (from.match(/<([^>]+)>/) || [])[1] || from;
+  const replyEmail  = (replyTo.match(/<([^>]+)>/) || [])[1] || replyTo;
+  const replyMismatch = replyTo && fromEmail && replyEmail &&
+    fromEmail.split('@')[1] !== replyEmail.split('@')[1];
+
+  // Attachments — sniff from body parts
+  const attachments = [];
+  const attachRegex = /Content-Disposition:\s*attachment[^]*?filename[*]?=["']?([^"'\r\n;]+)/gi;
+  let am;
+  while ((am = attachRegex.exec(raw)) !== null) {
+    const name = am[1].replace(/^=\?[^?]+\?[BQ]\?([^?]+)\?=/i, '$1').trim();
+    attachments.push({ name });
+  }
+
+  // ── Build UI ──────────────────────────────────────────────────────────────
+  const hasContent = from || to || subject || date;
+  const statusEl = document.getElementById('parse-status');
+  if (hasContent) {
+    statusEl.className = 'badge badge-ok';
+    statusEl.textContent = '● Parsed OK';
+  } else {
+    statusEl.className = 'badge badge-warn';
+    statusEl.textContent = '⚠ Limited Data';
+  }
+
+  // Summary strip
+  const summaryData = [
+    { label: 'From',     value: fromEmail || '—', cls: '' },
+    { label: 'Subject',  value: subject   || '—', cls: '' },
+    { label: 'Date',     value: date      || '—', cls: '' },
+    { label: 'Hops',     value: receivedList.length || '—', cls: receivedList.length > 5 ? 'warn' : 'accent' },
+    { label: 'Auth',     value: authChecks.length ? authChecks.map(a => a.name).join(' · ') : '—', cls: '' },
+    { label: 'Attachments', value: attachments.length || '0', cls: attachments.length ? 'warn' : '' },
+  ];
+
+  document.getElementById('summary-strip').innerHTML = summaryData.map(d => `
+    <div class="summary-card">
+      <div class="label">${d.label}</div>
+      <div class="value ${d.cls}">${escHtml(String(d.value))}</div>
+    </div>
+  `).join('');
+
+  // Sections
+  const sections = [];
+
+  // 1. Core headers
+  const coreRows = [
+    ['From',        from],
+    ['To',          to],
+    ['CC',          cc],
+    ['Reply-To',    replyTo + (replyMismatch ? ' ⚠ domain mismatch' : '')],
+    ['Subject',     subject],
+    ['Date',        date],
+    ['Message-ID',  messageId],
+    ['MIME-Version',mimeVer],
+    ['Content-Type',contentType],
+    ['X-Mailer',    xMailer],
+    ['X-Originating-IP', xOriginIp],
+  ].filter(([,v]) => v);
+
+  sections.push({
+    title: 'Core Headers',
+    count: coreRows.length,
+    html: `<table class="kv-table">${coreRows.map(([k,v]) => `
+      <tr>
+        <td>${escHtml(k)}</td>
+        <td>${escHtml(v)}</td>
+      </tr>`).join('')}
+    </table>`
+  });
+
+  // 2. Authentication
+  if (authChecks.length) {
+    sections.push({
+      title: 'Authentication',
+      count: authChecks.length,
+      html: authChecks.map(c => {
+        const pass = ['pass','bestguesspass'].includes(c.result);
+        const fail = ['fail','hardfail','softfail','none','permerror','temperror'].includes(c.result);
+        const pillCls = pass ? 'pill-pass' : fail ? 'pill-fail' : 'pill-none';
+        return `<div class="auth-row">
+          <span class="auth-name">${c.name}</span>
+          <span class="pill ${pillCls}">${escHtml(c.result)}</span>
+          <span class="auth-detail">${escHtml(authRaw.substring(0, 120))}${authRaw.length > 120 ? '…' : ''}</span>
+        </div>`;
+      }).join('')
+    });
+  } else if (authRaw) {
+    sections.push({
+      title: 'Authentication',
+      count: 1,
+      html: `<div class="auth-row"><span class="auth-detail">${escHtml(authRaw)}</span></div>`
+    });
+  }
+
+  // 3. Received chain
+  if (hops.length) {
+    sections.push({
+      title: 'Received Chain',
+      count: hops.length,
+      html: hops.map((h, idx) => `
+        <div class="hop">
+          <div class="hop-num">${hops.length - idx}</div>
+          <div class="hop-content">
+            <div class="hop-raw">${escHtml(h.raw)}</div>
+            ${h.date ? `<div style="color:var(--text-dim);font-size:10px;">${h.date.toUTCString()}</div>` : ''}
+            ${h.delay != null ? `<div class="hop-delay">+${h.delay}s from previous hop</div>` : ''}
+          </div>
+        </div>`).join('')
+    });
+  }
+
+  // 4. Attachments
+  if (attachments.length) {
+    sections.push({
+      title: 'Attachments',
+      count: attachments.length,
+      html: attachments.map(a => `
+        <div class="attach-row">
+          <span class="attach-icon">📎</span>
+          <span class="attach-name">${escHtml(a.name)}</span>
+        </div>`).join('')
+    });
+  }
+
+  // 5. All headers (raw)
+  const allHeadersHtml = Object.entries(headers).map(([k, vals]) =>
+    vals.map(v => `<span class="h-name">${escHtml(k)}</span>: <span class="h-val">${escHtml(v)}</span>`).join('\n')
+  ).join('\n');
+
+  sections.push({
+    title: 'All Headers (Raw)',
+    count: Object.values(headers).flat().length,
+    html: `<div class="raw-block">${allHeadersHtml}</div>`
+  });
+
+  document.getElementById('sections-container').innerHTML = sections.map((s, i) => `
+    <div class="section" id="sec-${i}">
+      <div class="section-head" onclick="toggleSection(${i})">
+        <span class="section-name">
+          ${escHtml(s.title)}
+          <span class="section-count">${s.count}</span>
+        </span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">${s.html}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleSection(i) {
+  const sec = document.getElementById('sec-' + i);
+  sec.classList.toggle('collapsed');
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
