@@ -288,12 +288,14 @@ _DOMAIN_RE = re.compile(
     r"\b((?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,})\b",
     re.IGNORECASE)
 _URL_RE    = re.compile(r'https?://[^\s\'"<>)\]]+', re.IGNORECASE)
-_SKIP_DOMAINS = frozenset({
-    "localhost", "example.com", "example.org", "test.com",
-    "gmail.com", "yahoo.com", "outlook.com", "hotmail.com",
-    "microsoft.com", "google.com", "amazon.com", "w3.org",
-    "ietf.org", "schemas.microsoft.com", "schemas.xmlsoap.org",
-})
+
+# not sure to implement it or not, as many threat actor use legitimate domain like microsoft and google form and google drive
+# _SKIP_DOMAINS = frozenset({
+#     "localhost", "example.com", "example.org", "test.com",
+#     "gmail.com", "yahoo.com", "outlook.com", "hotmail.com",
+#     "microsoft.com", "google.com", "amazon.com", "w3.org",
+#     "ietf.org", "schemas.microsoft.com", "schemas.xmlsoap.org",
+# })
 
 
 def _is_public_ip(ip: str) -> bool:
@@ -328,16 +330,18 @@ def _extract_iocs(all_headers: list[dict], bodies: dict, attachments: list[dict]
             ips.update(_IPV4_RE.findall(val))
             for d in _DOMAIN_RE.findall(val):
                 dl = d.lower()
-                if dl not in _SKIP_DOMAINS and len(dl) > 4:
-                    domains.add(dl)
+                # if dl not in _SKIP_DOMAINS and len(dl) > 4:
+                #     domains.add(dl)
+                domains.add(dl)
 
     for body_text in [bodies.get("plain") or "", bodies.get("html") or ""]:
         for url in _URL_RE.findall(body_text):
             urls.add(url.rstrip(".,;)>"))
         for d in _DOMAIN_RE.findall(body_text):
             dl = d.lower()
-            if dl not in _SKIP_DOMAINS and len(dl) > 4:
-                domains.add(dl)
+            # if dl not in _SKIP_DOMAINS and len(dl) > 4:
+            #     domains.add(dl)
+            domains.add(dl)
 
     hashes = [
         {"filename": a["filename"], "sha256": a["sha256"]}
