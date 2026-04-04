@@ -24,12 +24,14 @@ import email.policy
 import hashlib
 import ipaddress
 import logging
-import re
+import re2 as re
 import os
 import threading
 from email.utils import parseaddr, parsedate_to_datetime, getaddresses
 from typing import Any
 from email.header import decode_header, make_header
+from werkzeug.utils import secure_filename
+
 
 
 from flask import Flask, jsonify, request, Response
@@ -153,20 +155,31 @@ def _decode_header_value(raw: Any) -> str:
             return raw_str
 
 
-def _sanitise_filename(name: str) -> str:
+
+
+def _sanitise_filename(filename: str) -> str:
     """
-    Strip ALL extensions from a filename and replace with .bin.
-    Also remove path separators and null bytes.
-    e.g.  "evil.exe.doc"  →  "evil.bin"
-          "../escape"      →  "..escape.bin"
+    Combines Werkzeug's secure_filename with a forced .bin extension
+    to prevent double-extension and execution attacks.
     """
-    # Remove path components and null bytes
-    name = os.path.basename(name.replace("\x00", "").replace("/", "_").replace("\\", "_"))
-    if not name:
-        name = "attachment"
-    # Strip every extension (everything from the first dot onwards)
-    stem = name.split(".")[0] or "attachment"
-    return stem + ".bin"
+    if not filename:
+        return "unnamed_attachment.bin"
+
+    # 1. Use Werkzeug to remove path traversal and illegal chars
+    # This turns "../../../etc/passwd" into "etc_passwd"
+    clean_name = secure_filename(filename)
+
+    # 2. Strip ALL existing extensions to prevent "file.pdf.exe" attacks
+    # We take only the first part of the filename
+    base_name = clean_name.split('.')[0]
+
+    # 3. Handle cases where secure_filename might return an empty string
+    # (e.g., if the input was only "...")
+    if not base_name:
+        base_name = "attachment"
+
+    # 4. Force a neutral .bin extension
+    return f"{base_name}.bin"
 
 
 def _safe_content_disposition(filename: str) -> str:
@@ -186,29 +199,48 @@ def _safe_content_disposition(filename: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _parse_auth_results(raw: str) -> list[dict]:
-    checks = []
+    """
+    Parses Authentication-Results without using lookaheads.
+    Compatible with google-re2.
+    """
+    if not raw:
+        return []
+
+    # 1. Standardize whitespace
     normalized = " ".join(raw.split())
-    for proto in ("spf", "dkim", "dmarc", "arc"):
-        m = re.search(
-            rf"(?<![a-z]){proto}\s*=\s*(pass|fail|softfail|neutral|none|temperror|permerror)",
-            normalized, re.IGNORECASE)
-        if m:
-            cm = re.search(
-                rf"(?<![a-z]){proto}\b.+?(?=(?:spf|dkim|dmarc|arc)\s*=|$)",
-                normalized, re.IGNORECASE | re.DOTALL)
-            clause = cm.group(0).strip() if cm else m.group(0)
-            checks.append({"name": proto.upper(), "result": m.group(1).lower(), "clause": clause})
-    return checks
 
+    # 2. Define the protocols we care about
+    protos = ("spf", "dkim", "dmarc", "arc")
+    results = []
 
+    # 3. Find all occurrences of "key=value" pairs using a simple RE2-safe regex
+    # This matches: word = word
+    pattern = re.compile(r"(?i)\b(spf|dkim|dmarc|arc)\s*=\s*([a-z]+)")
+
+    # Use finditer to get all matches in the header string
+    for match in pattern.finditer(normalized):
+        proto_name = match.group(1).lower()
+        result_val = match.group(2).lower()
+
+        # Capture the context (roughly 100 chars after the match) for the 'clause'
+        start_idx = match.start()
+        context = normalized[start_idx: start_idx + 150]
+
+        results.append({
+            "name": proto_name.upper(),
+            "result": result_val,
+            "clause": context.strip()
+        })
+
+    return results
 # ═══════════════════════════════════════════════════════════════════════════════
 # Received chain
 # ═══════════════════════════════════════════════════════════════════════════════
 
-_FROM_RE = re.compile(r"from\s+(\S+)(?:\s+\(([^)]+)\))?", re.IGNORECASE)
-_BY_RE   = re.compile(r"by\s+(\S+)",   re.IGNORECASE)
-_WITH_RE = re.compile(r"with\s+(\S+)", re.IGNORECASE)
-_FOR_RE  = re.compile(r"for\s+(\S+)",  re.IGNORECASE)
+_FROM_RE = re.compile(r"(?i)from\s+(\S+)(?:\s+\(([^)]+)\))?")
+_BY_RE   = re.compile(r"(?i)by\s+(\S+)")
+_WITH_RE = re.compile(r"(?i)with\s+(\S+)")
+_FOR_RE  = re.compile(r"(?i)for\s+(\S+)")
 _IP_RE   = re.compile(r"\[(\d{1,3}(?:\.\d{1,3}){3})\]")
 
 
@@ -285,9 +317,10 @@ def _parse_attachments(msg: email.message.Message) -> list[dict]:
 
 _IPV4_RE   = re.compile(r"\b(\d{1,3}(?:\.\d{1,3}){3})\b")
 _DOMAIN_RE = re.compile(
-    r"\b((?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,})\b",
-    re.IGNORECASE)
-_URL_RE    = re.compile(r'https?://[^\s\'"<>)\]]+', re.IGNORECASE)
+    r"(?i)\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\b"
+)
+
+_URL_RE = re.compile(r"(?i)https?://[^\s'\"<>)\]]+")
 
 # not sure to implement it or not, as many threat actor use legitimate domain like microsoft and google form and google drive
 # _SKIP_DOMAINS = frozenset({
@@ -596,14 +629,13 @@ def _parse_eml(raw: str | bytes) -> dict:
 @app.route("/")
 def index() -> Response:
     try:
-        html = open(_FRONTEND_PATH, encoding="utf-8").read()
+        # 1. Read the frontend file
+        with open(_FRONTEND_PATH, "r", encoding="utf-8") as f:
+            html = f.read()
 
-        # Replace only the LAST </body> safely
-        patched = _LAST_BODY_RE.sub(
-            lambda m: _PATCH_SCRIPT + "\n</body>",
-            html,
-            count=1
-        )
+        # 2. Use the helper function (which now uses .rfind() instead of regex)
+        # This ensures the patch is injected safely before the final </body>
+        patched = _patch_frontend(html)
 
         return Response(patched, mimetype="text/html")
 
@@ -649,8 +681,7 @@ def analyze_text() -> Response:
         return jsonify({"error": "Parse error — check server logs"}), 500
 
 
-_SHA256_RE = re.compile(r'^[0-9a-f]{64}$', re.IGNORECASE)
-
+_SHA256_RE = re.compile(r"(?i)^[0-9a-f]{64}$")
 
 @app.route("/attachment/<sha256>")
 def download_attachment(sha256: str) -> Response:
@@ -684,8 +715,6 @@ def health() -> Response:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Frontend patch — injected just before the last </body>
 # ═══════════════════════════════════════════════════════════════════════════════
-
-_LAST_BODY_RE = re.compile(r"</body>(?![\s\S]*</body>)", re.IGNORECASE)
 
 _PATCH_SCRIPT = r"""
 <style>
@@ -1180,18 +1209,34 @@ function htmlModeConfirm(btn) {
   document.body.appendChild(overlay);
 }
 
+// This must be present for the highlighter to find the &lt; tags
+function safeEscape(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 // ── HTML syntax highlighter ────────────────────────────────────────────────
 function syntaxHighlightHtml(raw) {
-  return escHtml(raw)
-    .replace(/(&lt;!DOCTYPE[^&]*&gt;)/gi, '<span class="hl-doctype">$1</span>')
-    .replace(/(&lt;!--[\s\S]*?--&gt;)/g,  '<span class="hl-cmt">$1</span>')
-    .replace(/(&lt;\/?)([\w:-]+)((?:\s[^&]*)?)(&gt;)/g, (_, open, tag, attrs, close) => {
-      const hiAttrs = attrs.replace(
-        /([\w:-]+)(=)(&quot;[^&]*&quot;|&#39;[^&]*&#39;|\S+)/g,
-        '<span class="hl-attr">$1</span><span style="color:#abb2bf">$2</span><span class="hl-val">$3</span>'
-      );
-      return `<span class="hl-tag">${open}${tag}</span>${hiAttrs}<span class="hl-tag">${close}</span>`;
-    });
+  // 1. Use your existing escHtml for security
+  let safe = escHtml(raw);
+
+  // 2. Updated Regex: 
+  // - &lt;\/?      -> Catches < and </
+  // - [a-z0-9]+   -> Catches all tag names (html, h1, div)
+  // - (.*?)       -> Non-greedy match for attributes (even if empty)
+  return safe.replace(/(&lt;\/?[a-z0-9]+)(.*?)(&gt;)/gi, (match, tagStart, middle, tagEnd) => {
+    
+    // Highlight attributes: key=&quot;value&quot;
+    const hiAttrs = middle.replace(/([a-z-]+)=(&quot;.*?&quot;|&#39;.*?&#39;)/gi, 
+      ' <span class="hl-attr">$1</span>=<span class="hl-val">$2</span>');
+      
+    return `<span class="hl-tag">${tagStart}</span>${hiAttrs}<span class="hl-tag">${tagEnd}</span>`;
+  });
 }
 
 // ── MIME tree ──────────────────────────────────────────────────────────────
@@ -1276,16 +1321,23 @@ function escAttr(s) {
 </script>
 """
 
-
 def _patch_frontend(html: str) -> str:
-    """Replace only the LAST </body> tag to avoid double-injection."""
+    """
+    Finds the LAST </body> tag and injects the script before it.
+    This is ReDoS-safe and compatible with google-re2.
+    """
+    tag = "</body>"
+    # Find the last occurrence of </body> (case-insensitive search)
+    lower_html = html.lower()
+    idx = lower_html.rfind(tag)
 
-    return  _LAST_BODY_RE.sub(
-        lambda m: _PATCH_SCRIPT + "\n</body>",
-        html,
-        count=1
-    )
+    if idx == -1:
+        # If no body tag exists, just append the script to the end
+        return html + _PATCH_SCRIPT
 
+    # Slice the string: [Everything before] + [Script] + [The actual </body> tag]
+    # This preserves the original casing of the </body> tag found at that index
+    return html[:idx] + _PATCH_SCRIPT + "\n" + html[idx:]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
