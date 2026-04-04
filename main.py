@@ -485,6 +485,7 @@ _PATCH_SCRIPT = r"""
                    text-transform:uppercase; padding:3px 9px; cursor:pointer; transition:all .15s; }
 .copy-btn:hover  { border-color:var(--accent); color:var(--accent); }
 .copy-btn.copied { border-color:var(--accent); color:var(--accent); }
+.copy-all-btn    { font-size:10px; padding:4px 12px; border-color:var(--border2); color:var(--text-dim); }
 .dl-btn          { flex-shrink:0; background:transparent; border:1px solid var(--border2);
                    color:var(--text-dim); font-family:var(--mono); font-size:9px; letter-spacing:.06em;
                    text-transform:uppercase; padding:3px 9px; cursor:pointer; text-decoration:none;
@@ -688,7 +689,7 @@ function renderFromBackend(d) {
   // ── Received Chain ──────────────────────────────────────────────────────────
   if (hops.length) {
     let ht = `<table class="hop-table">
-      <thead><tr><th>#</th><th>From</th><th>By</th><th>Protocol</th><th>Timestamp</th><th>Delay</th></tr></thead>
+      <thead><tr><th>#</th><th>Sender</th><th>Receiver</th><th>Protocol</th><th>Timestamp</th><th>Delay</th></tr></thead>
       <tbody>`;
     hops.forEach((hop, i) => {
       const ds = hop.delay_seconds;
@@ -730,6 +731,15 @@ function renderFromBackend(d) {
     ).join('');
 
     const panels = tabs.map((t,i) => {
+      // Build copy-all text for this tab
+      let copyAllText = '';
+      if (t.type === 'hash') {
+        copyAllText = hashes.map(h=>h.sha256).join('\n');
+      } else {
+        copyAllText = t.items.join('\n');
+      }
+      const copyAllEscaped = escAttr(copyAllText);
+
       let inner = '';
       if (t.type === 'hash') {
         inner = hashes.length
@@ -738,7 +748,7 @@ function renderFromBackend(d) {
                 <div class="ioc-fname">${escHtml(h.filename)}</div>
                 <div class="ioc-val hash">${escHtml(h.sha256)}</div>
               </div>
-              <button class="copy-btn" onclick="copyIoc(this,'${escHtml(h.sha256)}')">Copy</button>
+              <button class="copy-btn" onclick="copyIoc(this,'${escAttr(h.sha256)}')">Copy</button>
             </div>`).join('')
           : '<div class="ioc-empty">No attachment hashes</div>';
       } else {
@@ -749,7 +759,15 @@ function renderFromBackend(d) {
             </div>`).join('')
           : `<div class="ioc-empty">No ${t.type}s found</div>`;
       }
-      return `<div class="ioc-panel${i===0?' active':''}" id="${t.id}"><div class="ioc-list">${inner}</div></div>`;
+
+      const copyAllBtn = (t.items.length || (t.type==='hash' && hashes.length))
+        ? `<button class="copy-btn copy-all-btn" onclick="copyIoc(this,'${copyAllEscaped}')">⎘ Copy All</button>`
+        : '';
+
+      return `<div class="ioc-panel${i===0?' active':''}" id="${t.id}">
+        ${copyAllBtn ? `<div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:flex-end">${copyAllBtn}</div>` : ''}
+        <div class="ioc-list">${inner}</div>
+      </div>`;
     }).join('');
 
     sections.push({ title:'IOC — IPs / Domains / URLs / Hashes', count: iocTotal,
@@ -823,60 +841,63 @@ function renderFromBackend(d) {
 }
 
 // ── HTML viewer ───────────────────────────────────────────────────────────────
+// We store the raw HTML as a data attribute on the container so we never
+// rely on injected <script> tags (which innerHTML strips for security).
 function buildHtmlViewer(rawHtml) {
-  // Default: block remote
-  const enc = encodeURIComponent(rawHtml);
+  // Encode the raw HTML safely for a data attribute
+  const encoded = btoa(unescape(encodeURIComponent(rawHtml)));
   return `
     <div class="html-toolbar" id="html-toolbar">
       <span style="font-size:10px;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase;margin-right:4px;">View:</span>
-      <button onclick="htmlMode('block-remote',this)">Render (Block Remote)</button>
+      <button class="active" onclick="htmlMode('block-remote',this)">Render (Block Remote)</button>
       <button onclick="htmlModeConfirm(this)">Render (With Remote)</button>
       <button onclick="htmlMode('source',this)">HTML Source</button>
     </div>
-    <div id="html-viewer-body">
-      ${buildBlockedFrame(rawHtml)}
-    </div>
-    <script>
-      document.querySelector('#html-toolbar button').classList.add('active');
-      window._emlRawHtml = ${JSON.stringify(rawHtml)};
-    <\/script>`;
+    <div id="html-viewer-body" data-b64="${encoded}">
+      ${_buildBlockRemoteFrame(rawHtml)}
+    </div>`;
 }
 
-function buildBlockedFrame(html) {
-  const blob = new Blob([html], {type:'text/html'});
-  const url  = URL.createObjectURL(blob);
-  return `<iframe class="html-frame" sandbox="allow-same-origin" src="${url}"></iframe>`;
+function _getRawHtml() {
+  const body = document.getElementById('html-viewer-body');
+  if (!body) return '';
+  const b64 = body.getAttribute('data-b64') || '';
+  try { return decodeURIComponent(escape(atob(b64))); } catch { return ''; }
+}
+
+function _buildBlockRemoteFrame(html) {
+  // Use srcdoc — avoids Blob URL + null-origin sandbox issues entirely
+  return `<iframe class="html-frame" sandbox="allow-same-origin" srcdoc="${escAttr(html)}"></iframe>`;
 }
 
 function htmlMode(mode, btn) {
-  document.querySelectorAll('.html-toolbar button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#html-toolbar button').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const raw = window._emlRawHtml || '';
+  const raw  = _getRawHtml();
   const body = document.getElementById('html-viewer-body');
+  const b64  = body.getAttribute('data-b64');          // preserve across replacement
   if (mode === 'source') {
     body.innerHTML = `<div class="html-source">${syntaxHighlightHtml(raw)}</div>`;
   } else if (mode === 'block-remote') {
-    body.innerHTML = buildBlockedFrame(raw);
+    body.innerHTML = _buildBlockRemoteFrame(raw);
   } else if (mode === 'with-remote') {
-    // Full render — allowed after confirmation
-    const blob = new Blob([raw], {type:'text/html'});
-    const url  = URL.createObjectURL(blob);
-    body.innerHTML = `<iframe class="html-frame" sandbox="allow-same-origin allow-scripts allow-popups" src="${url}"></iframe>`;
+    // allow-scripts enables remote JS; allow-same-origin lets the iframe read its own srcdoc
+    body.innerHTML = `<iframe class="html-frame" sandbox="allow-same-origin allow-scripts allow-popups" srcdoc="${escAttr(raw)}"></iframe>`;
   }
+  body.setAttribute('data-b64', b64);                  // restore after innerHTML wipe
 }
 
 function htmlModeConfirm(btn) {
-  // Double confirm before enabling remote resources
   const overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   overlay.innerHTML = `
     <div class="confirm-box">
       <h3>⚠ Load Remote Resources?</h3>
-      <p>This will load external images, stylesheets, and scripts from the email's HTML body.
+      <p>This will allow external images, stylesheets, and scripts embedded in the email HTML body to load.
          Remote resources can reveal your IP address to the sender and may execute tracking pixels or malicious scripts.</p>
       <div class="confirm-btns">
         <button class="confirm-cancel" onclick="this.closest('.confirm-overlay').remove()">Cancel</button>
-        <button class="confirm-proceed" onclick="this.closest('.confirm-overlay').remove();htmlMode('with-remote',null)">
+        <button class="confirm-proceed" onclick="this.closest('.confirm-overlay').remove();htmlMode('with-remote',document.querySelector('#html-toolbar button:nth-child(3)'))">
           I understand — Load Remote
         </button>
       </div>
