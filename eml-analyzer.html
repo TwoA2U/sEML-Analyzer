@@ -6,20 +6,21 @@
 <title>EML Analyzer</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+  /* ── Base variables ─────────────────────────────────────────────────────── */
   :root {
-    --bg:        #0a0c0f;
-    --surface:   #111318;
-    --border:    #1e2229;
-    --border2:   #2a2f3a;
-    --accent:    #00d4aa;
-    --accent2:   #0099ff;
-    --warn:      #ffaa00;
-    --danger:    #ff4455;
-    --text:      #c8d0dc;
-    --text-dim:  #5a6370;
-    --text-bright: #e8edf5;
-    --mono:      'IBM Plex Mono', monospace;
-    --sans:      'IBM Plex Sans', sans-serif;
+    --bg:         #0a0c0f;
+    --surface:    #13161e;
+    --border:     #222630;
+    --border2:    #2e3442;
+    --accent:     #00d4aa;
+    --accent2:    #0099ff;
+    --warn:       #ffaa00;
+    --danger:     #ff4455;
+    --text:       #d4dce8;
+    --text-dim:   #6e7a8a;
+    --text-bright:#f0f4fa;
+    --mono:       'IBM Plex Mono', monospace;
+    --sans:       'IBM Plex Sans', sans-serif;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,25 +39,20 @@
     content: '';
     position: fixed;
     inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.03) 2px,
-      rgba(0,0,0,0.03) 4px
-    );
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
     pointer-events: none;
     z-index: 1000;
   }
 
-  /* ── Layout ── */
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
   .app {
-    max-width: 1100px;
+    max-width: 100%;
     margin: 0 auto;
-    padding: 32px 24px 64px;
+    padding: 28px 40px 60px;
   }
 
-  /* ── Header ── */
+  /* ── Header ─────────────────────────────────────────────────────────────── */
   header {
     display: flex;
     align-items: flex-end;
@@ -65,474 +61,221 @@
     padding-bottom: 24px;
     border-bottom: 1px solid var(--border);
   }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
+  .logo { display: flex; align-items: center; gap: 10px; }
   .logo-icon {
-    width: 36px;
-    height: 36px;
+    width: 36px; height: 36px;
     border: 1.5px solid var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    font-size: 16px;
-    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 16px; position: relative;
   }
-
   .logo-icon::after {
-    content: '';
-    position: absolute;
-    inset: 2px;
-    border: 1px solid var(--accent);
-    opacity: 0.3;
+    content: ''; position: absolute; inset: 2px;
+    border: 1px solid var(--accent); opacity: 0.3;
   }
-
   h1 {
-    font-family: var(--mono);
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-bright);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-family: var(--mono); font-size: 18px; font-weight: 600;
+    color: var(--text-bright); letter-spacing: 0.08em; text-transform: uppercase;
   }
-
   .tagline {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.05em;
-    margin-left: auto;
-    text-transform: uppercase;
+    font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em;
+    margin-left: auto; text-transform: uppercase;
   }
 
-  /* ── Tab bar ── */
-  .tabs {
-    display: flex;
-    gap: 2px;
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-  }
-
+  /* ── Tabs ───────────────────────────────────────────────────────────────── */
+  .tabs { display: flex; gap: 2px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
   .tab {
-    padding: 10px 20px;
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    cursor: pointer;
-    border: none;
-    background: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
+    padding: 10px 20px; font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim);
+    cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
     transition: color 0.15s, border-color 0.15s;
   }
-
   .tab:hover { color: var(--text); }
-
-  .tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
-  /* ── Input areas ── */
+  /* ── Input zones ────────────────────────────────────────────────────────── */
   .input-zone {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    padding: 24px;
-    margin-bottom: 20px;
-    position: relative;
+    border: 1px solid var(--border); background: var(--surface);
+    padding: 24px; margin-bottom: 20px;
   }
-
   .zone-label {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
   }
+  .zone-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-  .zone-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  /* Drop zone */
   .dropzone {
-    border: 1px dashed var(--border2);
-    padding: 40px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    position: relative;
+    border: 1px dashed var(--border2); padding: 40px; text-align: center;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative;
   }
-
-  .dropzone:hover, .dropzone.dragover {
-    border-color: var(--accent);
-    background: rgba(0,212,170,0.03);
-  }
-
-  .dropzone input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-
-  .drop-icon {
-    font-size: 28px;
-    margin-bottom: 12px;
-    color: var(--text-dim);
-  }
-
-  .drop-title {
-    font-size: 13px;
-    color: var(--text);
-    margin-bottom: 6px;
-  }
-
-  .drop-sub {
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(0,212,170,.03); }
+  .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-icon { font-size: 28px; margin-bottom: 12px; color: var(--text-dim); }
+  .drop-title { font-size: 13px; color: var(--text); margin-bottom: 6px; }
+  .drop-sub { font-size: 11px; color: var(--text-dim); }
   .file-loaded {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    background: rgba(0,212,170,0.06);
-    border: 1px solid rgba(0,212,170,0.2);
-    color: var(--accent);
-    font-size: 12px;
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: rgba(0,212,170,.06); border: 1px solid rgba(0,212,170,.2);
+    color: var(--accent); font-size: 12px;
   }
 
-  /* Textarea */
   textarea {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 14px;
-    resize: vertical;
-    min-height: 200px;
-    line-height: 1.7;
-    outline: none;
-    transition: border-color 0.2s;
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 14px; resize: vertical; min-height: 200px; line-height: 1.7;
+    outline: none; transition: border-color 0.2s;
   }
-
   textarea:focus { border-color: var(--border2); }
   textarea::placeholder { color: var(--text-dim); }
 
-  /* ── Buttons ── */
-  .btn-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
+  /* ── Buttons ────────────────────────────────────────────────────────────── */
+  .btn-row { display: flex; gap: 10px; align-items: center; }
   .btn {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 10px 22px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 10px 22px; border: none; cursor: pointer; transition: background 0.15s, color 0.15s;
   }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #000;
-  }
-
+  .btn-primary { background: var(--accent); color: #000; }
   .btn-primary:hover { background: #00bfa0; }
-
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--border2);
-    color: var(--text-dim);
-  }
-
+  .btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--text-dim); }
   .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
 
-  /* ── Results ── */
+  /* ── Results container ──────────────────────────────────────────────────── */
   #results { display: none; animation: fadeIn 0.3s ease; }
   #results.visible { display: block; }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
   .results-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
   }
+  .results-title { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+  .badge-ok   { background: rgba(0,212,170,.1);  color: var(--accent); }
+  .badge-warn { background: rgba(255,170,0,.1);  color: var(--warn); }
 
-  .results-title {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
+  /* ── Summary strip ──────────────────────────────────────────────────────── */
+  .summary-strip { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 1px; background: var(--border); margin-bottom: 24px; }
+  .summary-card { background: var(--surface); padding: 16px 18px; }
+  .summary-card .label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+  .summary-card .value { font-size: 12px; color: #e0e8f5; word-break: break-all; }
+  .summary-card .value.accent { color: var(--accent); }
+  .summary-card .value.warn   { color: var(--warn); }
 
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .badge-ok    { background: rgba(0,212,170,0.1);  color: var(--accent); }
-  .badge-warn  { background: rgba(255,170,0,0.1);  color: var(--warn);   }
-  .badge-error { background: rgba(255,68,85,0.1);  color: var(--danger); }
-
-  /* Summary strip */
-  .summary-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1px;
-    background: var(--border);
-    margin-bottom: 24px;
-  }
-
-  .summary-card {
-    background: var(--surface);
-    padding: 16px 18px;
-  }
-
-  .summary-card .label {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-
-  .summary-card .value {
-    font-size: 13px;
-    color: var(--text-bright);
-    word-break: break-all;
-  }
-
-  .summary-card .value.accent  { color: var(--accent); }
-  .summary-card .value.warn    { color: var(--warn); }
-  .summary-card .value.danger  { color: var(--danger); }
-
-  /* Section blocks */
-  .section {
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-  }
-
+  /* ── Sections ───────────────────────────────────────────────────────────── */
+  .section { margin-bottom: 16px; border: 1px solid var(--border); }
   .section-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 11px 16px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 16px; background: #0e1016; border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none;
   }
-
-  .section-head:hover { background: #13161c; }
-
-  .section-name {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .section-count {
-    font-size: 10px;
-    color: var(--text-dim);
-    background: var(--border);
-    padding: 1px 7px;
-  }
-
-  .chevron {
-    color: var(--text-dim);
-    font-size: 10px;
-    transition: transform 0.2s;
-  }
-
+  .section-head:hover { background: #13161e; }
+  .section-name { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+  .section-count { font-size: 10px; color: var(--text-dim); background: var(--border); padding: 1px 7px; }
+  .chevron { color: var(--text-dim); font-size: 10px; transition: transform 0.2s; }
   .section.collapsed .chevron { transform: rotate(-90deg); }
   .section.collapsed .section-body { display: none; }
-
   .section-body { padding: 0; }
 
-  /* Table */
+  /* ── KV table ───────────────────────────────────────────────────────────── */
   .kv-table { width: 100%; border-collapse: collapse; }
-
   .kv-table tr { border-bottom: 1px solid var(--border); }
   .kv-table tr:last-child { border-bottom: none; }
-  .kv-table tr:hover td { background: rgba(255,255,255,0.015); }
+  .kv-table tr:hover td { background: rgba(255,255,255,.015); }
+  .kv-table td { padding: 9px 16px; vertical-align: top; font-size: 12px; line-height: 1.6; }
+  .kv-table td:first-child { width: 200px; color: #8a96a8; white-space: nowrap; font-size: 11px; letter-spacing: .03em; }
+  .kv-table td:last-child  { color: #e8edf8; word-break: break-word; }
 
-  .kv-table td {
-    padding: 9px 16px;
-    vertical-align: top;
-    font-size: 12px;
-    line-height: 1.6;
-  }
+  /* ── Auth ───────────────────────────────────────────────────────────────── */
+  .auth-block            { border-bottom: 1px solid var(--border); }
+  .auth-block:last-child { border-bottom: none; }
+  .auth-proto-row        { display:flex; align-items:flex-start; gap:10px; padding:12px 16px 4px; }
+  .auth-proto-name       { width:52px; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#8a96a8; padding-top:2px; flex-shrink:0; }
+  .auth-clause           { font-size:11px; color:#c8d6e8; line-height:1.7; flex:1; word-break:break-all; }
+  .auth-raw-block        { margin:0 16px 12px; padding:10px 14px; background:#0a0c10; font-size:11px; color:#6e7a8a; white-space:pre-wrap; word-break:break-all; line-height:1.7; border-left:2px solid #222630; }
+  .pill { padding: 2px 9px; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .pill-pass { background: rgba(0,212,170,.12); color: var(--accent); }
+  .pill-fail { background: rgba(255,68,85,.12);  color: var(--danger); }
+  .pill-none { background: rgba(90,99,112,.2);   color: var(--text-dim); }
 
-  .kv-table td:first-child {
-    width: 200px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    font-size: 11px;
-    letter-spacing: 0.03em;
-  }
+  /* ── Hop table ──────────────────────────────────────────────────────────── */
+  .hop-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .hop-table th { padding:8px 12px; background:#0a0c10; color:#6e7a8a; font-size:10px; letter-spacing:.08em; text-transform:uppercase; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .hop-table td { padding:10px 12px; vertical-align:top; border-bottom:1px solid var(--border); color:#d4dce8; word-break:break-word; }
+  .hop-table tr:last-child td { border-bottom:none; }
+  .hop-table tr.hop-raw-row td { padding:2px 12px 10px; color:#6e7a8a; font-size:10px; word-break:break-all; background:#0a0c10; }
+  .hop-table tr:hover:not(.hop-raw-row) td { background:rgba(255,255,255,.02); }
+  .hop-idx { color:var(--accent)!important; font-weight:600; width:32px; text-align:center; }
+  .hop-delay-badge { display:inline-block; padding:2px 8px; font-size:10px; font-weight:600; background:rgba(255,170,0,.12); color:#ffaa00; letter-spacing:.04em; }
+  .hop-delay-fast  { background:rgba(0,212,170,.1)!important; color:var(--accent)!important; }
+  .hop-delay-neg   { background:rgba(255,68,85,.1)!important;  color:#ff4455!important; }
 
-  .kv-table td:last-child {
-    color: var(--text-bright);
-    word-break: break-word;
-  }
+  /* ── IOC ────────────────────────────────────────────────────────────────── */
+  .ioc-tabs  { display:flex; gap:2px; padding:12px 16px 0; border-bottom:1px solid var(--border); }
+  .ioc-tab   { font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:7px 16px; border:none; background:transparent; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s,border-color .15s; }
+  .ioc-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .ioc-tab:hover  { color:var(--text); }
+  .ioc-panel      { display:none; }
+  .ioc-panel.active { display:block; }
+  .ioc-list  { padding:0; }
+  .ioc-item  { display:flex; align-items:center; padding:8px 16px; border-bottom:1px solid var(--border); gap:10px; }
+  .ioc-item:last-child { border-bottom:none; }
+  .ioc-item:hover { background:rgba(255,255,255,.02); }
+  .ioc-val   { font-size:12px; color:#5bc8ff; flex:1; word-break:break-all; font-family:var(--mono); }
+  .ioc-val.url  { color:#a78bfa; }
+  .ioc-val.hash { font-size:11px; color:var(--accent); }
+  .ioc-fname { font-size:11px; color:var(--text-dim); }
+  .ioc-empty { padding:16px; color:var(--text-dim); font-size:12px; }
+  .copy-btn  { flex-shrink:0; background:transparent; border:1px solid var(--border2); color:var(--text-dim); font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; cursor:pointer; transition:all .15s; }
+  .copy-btn:hover  { border-color:var(--accent); color:var(--accent); }
+  .copy-btn.copied { border-color:var(--accent); color:var(--accent); }
+  .copy-all-btn    { font-size:10px; padding:4px 14px; }
 
-  /* Received chain */
-  .hop {
-    border-bottom: 1px solid var(--border);
-    padding: 12px 16px;
-    display: grid;
-    grid-template-columns: 36px 1fr;
-    gap: 12px;
-    align-items: start;
-  }
+  /* ── Attachments ────────────────────────────────────────────────────────── */
+  .attach-row { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); font-size:12px; }
+  .attach-row:last-child { border-bottom:none; }
+  .attach-icon { color:var(--accent2); font-size:16px; }
+  .attach-name { color:var(--text-bright); flex:1; }
+  .attach-size { color:var(--text-dim); font-size:11px; }
+  .attach-type { color:var(--text-dim); font-size:10px; letter-spacing:.05em; }
+  .dl-btn { flex-shrink:0; background:transparent; border:1px solid var(--border2); color:var(--text-dim); font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; cursor:pointer; text-decoration:none; transition:all .15s; display:inline-block; }
+  .dl-btn:hover { border-color:#ffaa00; color:#ffaa00; }
 
-  .hop:last-child { border-bottom: none; }
+  /* ── HTML viewer ────────────────────────────────────────────────────────── */
+  .html-toolbar { display:flex; gap:6px; padding:10px 14px; border-bottom:1px solid var(--border); background:#0a0c10; align-items:center; flex-wrap:wrap; }
+  .html-toolbar button { font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; padding:5px 14px; border:1px solid var(--border2); background:transparent; color:var(--text-dim); cursor:pointer; transition:all .15s; }
+  .html-toolbar button.active { border-color:var(--accent); color:var(--accent); background:rgba(0,212,170,.06); }
+  .html-toolbar button:hover  { border-color:var(--text); color:var(--text); }
+  .html-frame  { width:100%; height:520px; border:none; background:#fff; display:block; }
+  .html-source { background:#080a0d; padding:14px; font-size:11px; line-height:1.8; white-space:pre; overflow:auto; max-height:520px; color:#abb2bf; }
+  .hl-tag     { color:#e06c75; }
+  .hl-attr    { color:#d19a66; }
+  .hl-val     { color:#98c379; }
+  .hl-cmt     { color:#5c6370; font-style:italic; }
+  .hl-doctype { color:#5c6370; }
 
-  .hop-num {
-    width: 28px;
-    height: 28px;
-    border: 1px solid var(--border2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    color: var(--text-dim);
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
+  /* ── MIME tree ──────────────────────────────────────────────────────────── */
+  .mime-node { border-left:2px solid var(--border2); margin-left:16px; padding:5px 10px; font-size:11px; }
+  .mime-node:first-child { margin-left:0; border-left:none; padding-left:0; }
+  .mime-type { color:#5bc8ff; }
+  .mime-dis  { color:var(--text-dim); font-size:10px; margin-left:8px; }
+  .mime-fn   { color:#ffaa00; font-size:10px; margin-left:8px; }
+  .mime-enc  { color:var(--text-dim); font-size:10px; margin-left:8px; }
 
-  .hop-content { font-size: 11px; }
-  .hop-raw { color: var(--text-dim); word-break: break-all; margin-bottom: 4px; }
-  .hop-delay { color: var(--warn); font-size: 10px; }
+  /* ── Raw block ──────────────────────────────────────────────────────────── */
+  .raw-block { background:var(--bg); padding:16px; font-size:11px; color:var(--text-dim); white-space:pre-wrap; word-break:break-all; max-height:300px; overflow-y:auto; line-height:1.8; }
+  .raw-block .h-name { color:var(--accent2); }
+  .raw-block .h-val  { color:var(--text); }
 
-  /* Auth results */
-  .auth-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    font-size: 12px;
-  }
+  /* ── Error box ──────────────────────────────────────────────────────────── */
+  .error-box { border:1px solid rgba(255,68,85,.3); background:rgba(255,68,85,.05); padding:16px 20px; color:var(--danger); font-size:12px; margin-bottom:20px; }
 
-  .auth-row:last-child { border-bottom: none; }
-
-  .auth-name {
-    width: 60px;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
-
-  .pill {
-    padding: 2px 9px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .pill-pass { background: rgba(0,212,170,0.12); color: var(--accent); }
-  .pill-fail { background: rgba(255,68,85,0.12);  color: var(--danger); }
-  .pill-none { background: rgba(90,99,112,0.2);   color: var(--text-dim); }
-
-  .auth-detail { color: var(--text-dim); font-size: 11px; word-break: break-all; }
-
-  /* Attachments */
-  .attach-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    font-size: 12px;
-  }
-
-  .attach-row:last-child { border-bottom: none; }
-  .attach-icon { color: var(--accent2); font-size: 16px; }
-  .attach-name { color: var(--text-bright); flex: 1; }
-  .attach-size { color: var(--text-dim); font-size: 11px; }
-  .attach-type { color: var(--text-dim); font-size: 10px; letter-spacing: 0.05em; }
-
-  /* Raw headers */
-  .raw-block {
-    background: var(--bg);
-    padding: 16px;
-    font-size: 11px;
-    color: var(--text-dim);
-    white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 300px;
-    overflow-y: auto;
-    line-height: 1.8;
-  }
-
-  .raw-block .h-name { color: var(--accent2); }
-  .raw-block .h-val  { color: var(--text); }
-
-  /* Error state */
-  .error-box {
-    border: 1px solid rgba(255,68,85,0.3);
-    background: rgba(255,68,85,0.05);
-    padding: 16px 20px;
-    color: var(--danger);
-    font-size: 12px;
-    margin-bottom: 20px;
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border2); }
+  /* ── Scrollbar ──────────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width:4px; height:4px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border2); }
 </style>
 </head>
 <body>
@@ -546,13 +289,11 @@
     <span class="tagline">Email Forensics Tool</span>
   </header>
 
-  <!-- Input tabs -->
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('file', this)">Upload .eml File</button>
-    <button class="tab" onclick="switchTab('text', this)">Paste Headers / Raw</button>
+    <button class="tab active" onclick="switchTab('file',this)">Upload .eml File</button>
+    <button class="tab" onclick="switchTab('text',this)">Paste Headers / Raw</button>
   </div>
 
-  <!-- File tab -->
   <div id="tab-file" class="tab-panel active">
     <div class="input-zone">
       <div class="zone-label">EML File</div>
@@ -574,7 +315,6 @@
     </div>
   </div>
 
-  <!-- Text tab -->
   <div id="tab-text" class="tab-panel">
     <div class="input-zone">
       <div class="zone-label">Raw Headers or Full EML</div>
@@ -594,27 +334,23 @@ Authentication-Results: spf=pass dkim=pass dmarc=pass
     </div>
   </div>
 
-  <!-- Results -->
   <div id="results">
     <div style="height:32px"></div>
     <div class="results-header">
       <span class="results-title">Analysis Results</span>
       <span id="parse-status" class="badge badge-ok">● Parsed OK</span>
     </div>
-
     <div id="error-box" class="error-box" style="display:none"></div>
-
-    <!-- Summary strip -->
     <div class="summary-strip" id="summary-strip"></div>
-
-    <!-- Sections -->
     <div id="sections-container"></div>
   </div>
 
-</div>
+</div><!-- /.app -->
 
 <script>
-// ── Tab switching ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// UI helpers
+// ═══════════════════════════════════════════════════════════════════════════
 function switchTab(id, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -622,36 +358,42 @@ function switchTab(id, btn) {
   document.getElementById('tab-' + id).classList.add('active');
 }
 
-// ── File handling ─────────────────────────────────────────────────────────────
-let loadedFileContent = null;
+function toggleSection(i) {
+  document.getElementById('sec-' + i).classList.toggle('collapsed');
+}
 
-const dropzone = document.getElementById('dropzone');
+// ── File handling ──────────────────────────────────────────────────────────
+let loadedFileContent = null;
+const dropzone  = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('dragover'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
 dropzone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropzone.classList.remove('dragover');
+  e.preventDefault(); dropzone.classList.remove('dragover');
   const f = e.dataTransfer.files[0];
   if (f) loadFile(f);
 });
-
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) loadFile(fileInput.files[0]);
-});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
 
 function loadFile(f) {
   const reader = new FileReader();
   reader.onload = e => {
     loadedFileContent = e.target.result;
     dropzone.style.display = 'none';
-    const fl = document.getElementById('file-loaded');
-    fl.style.display = 'flex';
+    document.getElementById('file-loaded').style.display = 'flex';
     document.getElementById('file-name').textContent = f.name;
     document.getElementById('file-size').textContent = formatBytes(f.size);
   };
   reader.readAsText(f);
+}
+
+function clearAll() {
+  loadedFileContent = null; fileInput.value = '';
+  dropzone.style.display = 'block';
+  document.getElementById('file-loaded').style.display = 'none';
+  document.getElementById('rawInput').value = '';
+  document.getElementById('results').classList.remove('visible');
 }
 
 function formatBytes(b) {
@@ -660,295 +402,381 @@ function formatBytes(b) {
   return (b/1048576).toFixed(1) + ' MB';
 }
 
-// ── Entry points ──────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Backend API
+// ═══════════════════════════════════════════════════════════════════════════
+async function callBackend(endpoint, payload) {
+  let resp;
+  if (endpoint === 'file') {
+    const fd = new FormData(); fd.append('file', payload);
+    resp = await fetch('/analyze/file', { method:'POST', body:fd });
+  } else {
+    resp = await fetch('/analyze/text', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ raw: payload }),
+    });
+  }
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: resp.statusText }));
+    throw new Error(err.error || 'Server error');
+  }
+  return resp.json();
+}
+
 function analyzeFile() {
-  if (!loadedFileContent) { alert('Please select an .eml file first.'); return; }
-  runAnalysis(loadedFileContent);
+  const file = fileInput.files[0];
+  if (!file && !loadedFileContent) { alert('Please select an .eml file first.'); return; }
+  if (!file) {
+    callBackend('text', loadedFileContent).then(renderFromBackend).catch(e => showError(e.message));
+    return;
+  }
+  callBackend('file', file).then(renderFromBackend).catch(e => showError(e.message));
 }
 
 function analyzeText() {
   const raw = document.getElementById('rawInput').value.trim();
-  if (!raw) { alert('Please paste some header or EML content first.'); return; }
-  runAnalysis(raw);
+  if (!raw) { alert('Please paste some content first.'); return; }
+  callBackend('text', raw).then(renderFromBackend).catch(e => showError(e.message));
 }
 
-function clearAll() {
-  loadedFileContent = null;
-  fileInput.value = '';
-  dropzone.style.display = 'block';
-  document.getElementById('file-loaded').style.display = 'none';
-  document.getElementById('rawInput').value = '';
-  document.getElementById('results').classList.remove('visible');
+function showError(msg) {
+  const eb = document.getElementById('error-box');
+  eb.textContent = '❌ ' + msg; eb.style.display = 'block';
+  document.getElementById('results').classList.add('visible');
 }
 
-// ── Core parser ───────────────────────────────────────────────────────────────
-function parseHeaders(raw) {
-  // Unfold multi-line header values (RFC 5322)
-  const unfolded = raw.replace(/\r\n([ \t])/g, ' $1').replace(/\n([ \t])/g, ' $1');
+// ═══════════════════════════════════════════════════════════════════════════
+// Main renderer
+// ═══════════════════════════════════════════════════════════════════════════
+function renderFromBackend(d) {
+  document.getElementById('error-box').style.display = 'none';
+  const core     = d.core            || {};
+  const auth     = d.authentication  || {};
+  const hops     = d.received_chain  || [];
+  const attaches = d.attachments     || [];
+  const summary  = d.summary         || {};
+  const allHdrs  = d.all_headers     || [];
+  const xHdrs    = d.x_headers       || [];
+  const iocs     = d.iocs            || {};
+  const mime     = d.mime_structure  || null;
+  const bodies   = d.bodies          || {};
 
-  const headers = {};   // name (lowercase) → array of values
-  const lines = unfolded.split(/\r?\n/);
-  let bodyStart = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim() === '') { bodyStart = i + 1; break; }
-    const m = line.match(/^([A-Za-z0-9\-]+)\s*:\s*(.*)/);
-    if (m) {
-      const key = m[1].toLowerCase();
-      if (!headers[key]) headers[key] = [];
-      headers[key].push(m[2].trim());
-    }
-  }
-
-  const body = bodyStart >= 0 ? lines.slice(bodyStart).join('\n') : '';
-  return { headers, body, raw: unfolded };
-}
-
-function first(headers, key) {
-  return (headers[key] || [])[0] || '';
-}
-
-function all(headers, key) {
-  return headers[key] || [];
-}
-
-// Parse authentication-results header
-function parseAuthResults(val) {
-  const checks = [];
-
-  // Normalize whitespace (like Python version)
-  val = val.replace(/\s+/g, ' ').trim();
-
-  const protos = ['spf', 'dkim', 'dmarc', 'arc'];
-
-  protos.forEach((proto) => {
-    const regex = new RegExp(
-      `(?<![a-z])${proto}\\s*=\\s*(pass|fail|softfail|neutral|none|temperror|permerror)`,
-      'i'
-    );
-
-    const m = val.match(regex);
-
-    if (m) {
-      checks.push({
-        name: proto.toUpperCase(),
-        result: m[1].toLowerCase(),
-        raw: val
-      });
-    }
-  });
-
-  return checks;
-}
-
-// Parse received hops and compute delays
-function parseReceived(receivedList) {
-  const hops = receivedList.map(r => {
-    const dateMatch = r.match(/;\s*(.+)$/);
-    let date = null, delay = null;
-    if (dateMatch) {
-      const d = new Date(dateMatch[1].trim());
-      if (!isNaN(d)) date = d;
-    }
-    return { raw: r.trim(), date };
-  }).reverse(); // oldest first
-
-  for (let i = 1; i < hops.length; i++) {
-    if (hops[i].date && hops[i-1].date) {
-      const diff = Math.round((hops[i].date - hops[i-1].date) / 1000);
-      hops[i].delay = diff;
-    }
-  }
-  return hops.reverse(); // newest first for display
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
-function runAnalysis(raw) {
-  const { headers, body } = parseHeaders(raw);
-
-  // Basic fields
-  const from       = first(headers, 'from');
-  const to         = first(headers, 'to');
-  const cc         = first(headers, 'cc');
-  const subject    = first(headers, 'subject');
-  const date       = first(headers, 'date');
-  const messageId  = first(headers, 'message-id');
-  const replyTo    = first(headers, 'reply-to');
-  const xMailer    = first(headers, 'x-mailer');
-  const xOriginIp  = first(headers, 'x-originating-ip') || first(headers, 'x-sender-ip') || first(headers, 'x-source-ip');
-  const contentType = first(headers, 'content-type');
-  const mimeVer    = first(headers, 'mime-version');
-  const receivedList = all(headers, 'received');
-  const authRaw    = first(headers, 'authentication-results');
-  const authChecks = authRaw ? parseAuthResults(authRaw) : [];
-  const hops       = parseReceived(receivedList);
-
-  // Check for reply-to mismatch (phishing indicator)
-  const fromEmail   = (from.match(/<([^>]+)>/) || [])[1] || from;
-  const replyEmail  = (replyTo.match(/<([^>]+)>/) || [])[1] || replyTo;
-  const replyMismatch = replyTo && fromEmail && replyEmail &&
-    fromEmail.split('@')[1] !== replyEmail.split('@')[1];
-
-  // Attachments — sniff from body parts
-  const attachments = [];
-  const attachRegex = /Content-Disposition:\s*attachment[^]*?filename[*]?=["']?([^"'\r\n;]+)/gi;
-  let am;
-  while ((am = attachRegex.exec(raw)) !== null) {
-    const name = am[1].replace(/^=\?[^?]+\?[BQ]\?([^?]+)\?=/i, '$1').trim();
-    attachments.push({ name });
-  }
-
-  // ── Build UI ──────────────────────────────────────────────────────────────
-  const hasContent = from || to || subject || date;
-  const statusEl = document.getElementById('parse-status');
-  if (hasContent) {
-    statusEl.className = 'badge badge-ok';
-    statusEl.textContent = '● Parsed OK';
-  } else {
-    statusEl.className = 'badge badge-warn';
-    statusEl.textContent = '⚠ Limited Data';
-  }
+  document.getElementById('parse-status').className   = 'badge badge-ok';
+  document.getElementById('parse-status').textContent = '● Parsed OK';
 
   // Summary strip
-  const summaryData = [
-    { label: 'From',     value: fromEmail || '—', cls: '' },
-    { label: 'Subject',  value: subject   || '—', cls: '' },
-    { label: 'Date',     value: date      || '—', cls: '' },
-    { label: 'Hops',     value: receivedList.length || '—', cls: receivedList.length > 5 ? 'warn' : 'accent' },
-    { label: 'Auth',     value: authChecks.length ? authChecks.map(a => a.name).join(' · ') : '—', cls: '' },
-    { label: 'Attachments', value: attachments.length || '0', cls: attachments.length ? 'warn' : '' },
-  ];
+  const fromAddr = core.from ? core.from.address : '—';
+  document.getElementById('summary-strip').innerHTML = [
+    { label:'From',          value: fromAddr || '—', cls:'' },
+    { label:'Subject',       value: core.subject || '—', cls:'' },
+    { label:'Date',          value: core.date ? (core.date.raw || '—') : '—', cls:'' },
+    { label:'Hops',          value: summary.hop_count ?? '—', cls: summary.hop_count > 5 ? 'warn':'accent' },
+    { label:'IPs / Domains', value: `${(iocs.ips||[]).length} / ${(iocs.domains||[]).length}`, cls:'' },
+    { label:'Attachments',   value: summary.attachment_count ?? 0, cls: summary.attachment_count ? 'warn':'' },
+  ].map(c => `<div class="summary-card"><div class="label">${c.label}</div><div class="value ${c.cls}">${escHtml(String(c.value))}</div></div>`).join('');
 
-  document.getElementById('summary-strip').innerHTML = summaryData.map(d => `
-    <div class="summary-card">
-      <div class="label">${d.label}</div>
-      <div class="value ${d.cls}">${escHtml(String(d.value))}</div>
-    </div>
-  `).join('');
-
-  // Sections
   const sections = [];
 
-  // 1. Core headers
-  const coreRows = [
-    ['From',        from],
-    ['To',          to],
-    ['CC',          cc],
-    ['Reply-To',    replyTo + (replyMismatch ? ' ⚠ domain mismatch' : '')],
-    ['Subject',     subject],
-    ['Date',        date],
-    ['Message-ID',  messageId],
-    ['MIME-Version',mimeVer],
-    ['Content-Type',contentType],
-    ['X-Mailer',    xMailer],
-    ['X-Originating-IP', xOriginIp],
-  ].filter(([,v]) => v);
+  // MIME Structure
+  if (mime) {
+    sections.push({ title:'MIME Structure', count:'',
+      html:`<div style="padding:14px 18px">${renderMimeNode(mime)}</div>` });
+  }
 
-  sections.push({
-    title: 'Core Headers',
-    count: coreRows.length,
-    html: `<table class="kv-table">${coreRows.map(([k,v]) => `
-      <tr>
-        <td>${escHtml(k)}</td>
-        <td>${escHtml(v)}</td>
-      </tr>`).join('')}
-    </table>`
+  // Core Headers
+  const mismatch = core.reply_to && core.reply_to.mismatch;
+  const toStr  = (core.to  ||[]).map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
+  const ccStr  = (core.cc  ||[]).map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
+  const bccStr = (core.bcc ||[]).map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
+  const coreRows = [
+    ['From',             core.from ? core.from.raw : ''],
+    ['To', toStr], ['CC', ccStr], ['BCC', bccStr],
+    ['Reply-To', (core.reply_to?.raw || '') + (mismatch ? ' ⚠ domain mismatch' : '')],
+    ['Subject',          core.subject],
+    ['Date',             core.date ? core.date.raw : ''],
+    ['Message-ID',       core.message_id],
+    ['MIME-Version',     core.mime_version],
+    ['Content-Type',     core.content_type],
+    ['X-Mailer',         core.x_mailer],
+    ['X-Originating-IP', core.x_originating_ip],
+  ].filter(([,v]) => v);
+  sections.push({ title:'Core Headers', count: coreRows.length,
+    html:`<table class="kv-table">${coreRows.map(([k,v]) => `<tr>
+      <td>${escHtml(k)}</td>
+      <td style="${k==='Reply-To'&&mismatch?'color:#ffaa00':''}">${escHtml(v)}</td>
+    </tr>`).join('')}</table>`
   });
 
-  // 2. Authentication
-  if (authChecks.length) {
-    sections.push({
-      title: 'Authentication',
-      count: authChecks.length,
-      html: authChecks.map(c => {
+  // Authentication
+  if (auth.raw) {
+    const checks = auth.checks || [];
+    let authHtml = '';
+    if (checks.length) {
+      authHtml += checks.map(c => {
         const pass = ['pass','bestguesspass'].includes(c.result);
         const fail = ['fail','hardfail','softfail','none','permerror','temperror'].includes(c.result);
         const pillCls = pass ? 'pill-pass' : fail ? 'pill-fail' : 'pill-none';
-        return `<div class="auth-row">
-          <span class="auth-name">${c.name}</span>
-          <span class="pill ${pillCls}">${escHtml(c.result)}</span>
-          <span class="auth-detail">${escHtml(authRaw.substring(0, 120))}${authRaw.length > 120 ? '…' : ''}</span>
-        </div>`;
-      }).join('')
-    });
-  } else if (authRaw) {
-    sections.push({
-      title: 'Authentication',
-      count: 1,
-      html: `<div class="auth-row"><span class="auth-detail">${escHtml(authRaw)}</span></div>`
-    });
-  }
-
-  // 3. Received chain
-  if (hops.length) {
-    sections.push({
-      title: 'Received Chain',
-      count: hops.length,
-      html: hops.map((h, idx) => `
-        <div class="hop">
-          <div class="hop-num">${hops.length - idx}</div>
-          <div class="hop-content">
-            <div class="hop-raw">${escHtml(h.raw)}</div>
-            ${h.date ? `<div style="color:var(--text-dim);font-size:10px;">${h.date.toUTCString()}</div>` : ''}
-            ${h.delay != null ? `<div class="hop-delay">+${h.delay}s from previous hop</div>` : ''}
+        return `<div class="auth-block">
+          <div class="auth-proto-row">
+            <span class="auth-proto-name">${c.name}</span>
+            <span class="pill ${pillCls}" style="flex-shrink:0;margin-top:1px">${escHtml(c.result)}</span>
+            <span class="auth-clause">${escHtml(c.clause||'')}</span>
           </div>
-        </div>`).join('')
-    });
+        </div>`;
+      }).join('');
+    }
+    authHtml += `<div style="padding:4px 16px 12px">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;margin-top:8px;">Full Authentication-Results</div>
+      <div class="auth-raw-block">${escHtml(auth.raw)}</div>
+    </div>`;
+    if (auth.received_spf) authHtml += `<div class="auth-block"><div class="auth-proto-row">
+      <span class="auth-proto-name">SPF HDR</span>
+      <span class="auth-clause">${escHtml(auth.received_spf)}</span>
+    </div></div>`;
+    if (auth.dkim_header) authHtml += `<div class="auth-block"><div class="auth-proto-row">
+      <span class="auth-proto-name">DKIM SIG</span>
+      <span class="auth-clause" style="word-break:break-all">${escHtml(auth.dkim_header)}</span>
+    </div></div>`;
+    sections.push({ title:'Authentication', count: checks.length || 1, html: authHtml });
   }
 
-  // 4. Attachments
-  if (attachments.length) {
-    sections.push({
-      title: 'Attachments',
-      count: attachments.length,
-      html: attachments.map(a => `
+  // Received Chain
+  if (hops.length) {
+    let ht = `<table class="hop-table">
+      <thead><tr><th>#</th><th>Sender</th><th>Receiver</th><th>Protocol</th><th>Timestamp</th><th>Delay</th></tr></thead><tbody>`;
+    hops.forEach((hop, i) => {
+      const ds = hop.delay_seconds;
+      let dcls = 'hop-delay-badge', dtxt = '—';
+      if (ds != null) {
+        dtxt = ds >= 0 ? `+${ds}s` : `${ds}s`;
+        dcls += ds < 0 ? ' hop-delay-neg' : ds < 5 ? ' hop-delay-fast' : '';
+      }
+      const ips = hop.ips && hop.ips.length
+        ? `<br><span style="color:#5bc8ff;font-size:10px">[${escHtml(hop.ips.join(', '))}]</span>` : '';
+      ht += `<tr>
+        <td class="hop-idx">${i+1}</td>
+        <td>${escHtml(hop.sender||'—')}${ips}</td>
+        <td>${escHtml(hop.receiver||'—')}</td>
+        <td style="color:var(--text-dim)">${escHtml(hop.protocol||'—')}</td>
+        <td style="color:var(--text-dim);font-size:11px;white-space:nowrap">${escHtml(hop.timestamp_iso||'—')}</td>
+        <td><span class="${dcls}">${dtxt}</span></td>
+      </tr>
+      <tr class="hop-raw-row"><td colspan="6">${escHtml(hop.raw)}</td></tr>`;
+    });
+    ht += '</tbody></table>';
+    sections.push({ title:'Received Chain', count: hops.length, html: ht });
+  }
+
+  // IOC
+  const ips = iocs.ips||[], domains = iocs.domains||[], urls = iocs.urls||[], hashes = iocs.hashes||[];
+  const iocTotal = ips.length + domains.length + urls.length + hashes.length;
+  if (iocTotal > 0) {
+    const tabs = [
+      { id:'ioc-ips',     label:`IPs (${ips.length})`,         items:ips,     cls:'',    type:'ip'     },
+      { id:'ioc-domains', label:`Domains (${domains.length})`, items:domains, cls:'',    type:'domain' },
+      { id:'ioc-urls',    label:`URLs (${urls.length})`,       items:urls,    cls:'url', type:'url'    },
+      { id:'ioc-hashes',  label:`Hashes (${hashes.length})`,   items:hashes,  cls:'hash',type:'hash'   },
+    ];
+    const tabBar = tabs.map((t,i) =>
+      `<button class="ioc-tab${i===0?' active':''}" onclick="switchIocTab('${t.id}',this)">${t.label}</button>`
+    ).join('');
+    const panels = tabs.map((t,i) => {
+      const copyAllText = t.type==='hash' ? hashes.map(h=>h.sha256).join('\n') : t.items.join('\n');
+      let inner = '';
+      if (t.type === 'hash') {
+        inner = hashes.length
+          ? hashes.map(h=>`<div class="ioc-item">
+              <div style="flex:1"><div class="ioc-fname">${escHtml(h.filename)}</div>
+              <div class="ioc-val hash">${escHtml(h.sha256)}</div></div>
+              <button class="copy-btn" data-copy="${escAttr(h.sha256)}" onclick="copyText(this)">Copy</button>
+            </div>`).join('')
+          : '<div class="ioc-empty">No attachment hashes</div>';
+      } else {
+        inner = t.items.length
+          ? t.items.map(v=>`<div class="ioc-item">
+              <span class="ioc-val ${t.cls}">${escHtml(v)}</span>
+              <button class="copy-btn" data-copy="${escAttr(v)}" onclick="copyText(this)">Copy</button>
+            </div>`).join('')
+          : `<div class="ioc-empty">No ${t.type}s found</div>`;
+      }
+      const hasItems = t.type==='hash' ? hashes.length>0 : t.items.length>0;
+      const copyAllBtn = hasItems
+        ? `<button class="copy-btn copy-all-btn" data-copy="${escAttr(copyAllText)}" onclick="copyText(this)">⎘ Copy All</button>` : '';
+      return `<div class="ioc-panel${i===0?' active':''}" id="${t.id}">
+        ${copyAllBtn?`<div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:flex-end">${copyAllBtn}</div>`:''}
+        <div class="ioc-list">${inner}</div>
+      </div>`;
+    }).join('');
+    sections.push({ title:'IOC — IPs / Domains / URLs / Hashes', count:iocTotal,
+      html:`<div class="ioc-tabs">${tabBar}</div>${panels}` });
+  }
+
+  // X-Headers
+  if (xHdrs.length) {
+    const byVendor = {};
+    xHdrs.forEach(x => { const v = x.vendor||'Custom'; (byVendor[v]=byVendor[v]||[]).push(x); });
+    let xHtml = '';
+    Object.entries(byVendor).forEach(([vendor, hdrs]) => {
+      xHtml += `<div style="border-bottom:1px solid var(--border)">
+        <div style="padding:8px 16px 4px;font-size:10px;color:#5bc8ff;letter-spacing:.08em;text-transform:uppercase">${escHtml(vendor)}</div>
+        <table class="kv-table" style="margin-bottom:4px">`;
+      hdrs.forEach(x => x.values.forEach(v => {
+        xHtml += `<tr><td>${escHtml(x.name)}</td><td>${escHtml(v)}</td></tr>`;
+      }));
+      xHtml += '</table></div>';
+    });
+    sections.push({ title:'X-Headers', count:xHdrs.length, html:xHtml });
+  }
+
+  // Attachments
+  if (attaches.length) {
+    sections.push({ title:'Attachments', count:attaches.length,
+      html: attaches.map(a => `
         <div class="attach-row">
           <span class="attach-icon">📎</span>
-          <span class="attach-name">${escHtml(a.name)}</span>
-        </div>`).join('')
+          <span class="attach-name">${escHtml(a.filename)}</span>
+          <span class="attach-type">${escHtml(a.content_type)}</span>
+          <span class="attach-size" style="margin-left:auto">${formatBytes(a.size_bytes)}</span>
+          ${a.sha256?`<a class="dl-btn" href="/attachment/${escHtml(a.sha256)}" title="Download as .bin">⬇ .bin</a>`:''}
+        </div>
+        ${a.sha256?`<div style="padding:0 16px 10px;font-size:10px;color:var(--text-dim)">SHA-256: <span style="color:var(--accent);font-family:var(--mono)">${escHtml(a.sha256)}</span></div>`:''}
+      `).join('')
     });
   }
 
-  // 5. All headers (raw)
-  const allHeadersHtml = Object.entries(headers).map(([k, vals]) =>
-    vals.map(v => `<span class="h-name">${escHtml(k)}</span>: <span class="h-val">${escHtml(v)}</span>`).join('\n')
+  // HTML Body — block remote only + source view (no "with remote" option)
+  if (bodies.html_b64) {
+    sections.push({ title:'HTML Body', count:'', html: buildHtmlViewer(bodies.html_b64) });
+  } else if (bodies.plain) {
+    sections.push({ title:'Plain Body', count:'',
+      html:`<div class="raw-block" style="max-height:400px">${escHtml(bodies.plain)}</div>` });
+  }
+
+  // All Headers raw
+  const rawBlock = allHdrs.map(h =>
+    h.values.map(v => `<span class="h-name">${escHtml(h.name)}</span>: <span class="h-val">${escHtml(v)}</span>`).join('\n')
   ).join('\n');
+  sections.push({ title:'All Headers (Raw)', count:allHdrs.reduce((s,h)=>s+h.values.length,0),
+    html:`<div class="raw-block">${rawBlock}</div>` });
 
-  sections.push({
-    title: 'All Headers (Raw)',
-    count: Object.values(headers).flat().length,
-    html: `<div class="raw-block">${allHeadersHtml}</div>`
-  });
-
-  document.getElementById('sections-container').innerHTML = sections.map((s, i) => `
+  document.getElementById('sections-container').innerHTML = sections.map((s,i) => `
     <div class="section" id="sec-${i}">
       <div class="section-head" onclick="toggleSection(${i})">
-        <span class="section-name">
-          ${escHtml(s.title)}
-          <span class="section-count">${s.count}</span>
+        <span class="section-name">${escHtml(s.title)}
+          ${s.count!==''?`<span class="section-count">${s.count}</span>`:''}
         </span>
         <span class="chevron">▾</span>
       </div>
       <div class="section-body">${s.html}</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
   document.getElementById('results').classList.add('visible');
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
-function toggleSection(i) {
-  const sec = document.getElementById('sec-' + i);
-  sec.classList.toggle('collapsed');
+// ─── HTML viewer (block remote + source only) ─────────────────────────────
+// Uses srcdoc with sandbox="allow-same-origin" which blocks all remote
+// network requests while allowing the HTML to render inline styles/images.
+function buildHtmlViewer(html_b64) {
+  return `
+    <div class="html-toolbar" id="html-toolbar">
+      <span style="font-size:10px;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase;margin-right:4px;">View:</span>
+      <button class="active" onclick="htmlMode('render',this)">Render (Block Remote)</button>
+      <button onclick="htmlMode('source',this)">HTML Source</button>
+    </div>
+    <div id="html-viewer-body" data-b64="${escAttr(html_b64)}">
+      ${buildSrcdoc(b64DecodeUnicode(html_b64))}
+    </div>`;
+}
+
+function buildSrcdoc(html) {
+  // sandbox="allow-same-origin" — renders the HTML but blocks all network
+  // requests (images from external URLs, remote stylesheets, scripts).
+  return `<iframe class="html-frame" sandbox="allow-same-origin" srcdoc="${escAttr(html)}"></iframe>`;
+}
+
+function htmlMode(mode, btn) {
+  document.querySelectorAll('#html-toolbar button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const body = document.getElementById('html-viewer-body');
+  const b64  = body.getAttribute('data-b64');
+  const raw  = b64DecodeUnicode(b64 || '');
+  if (mode === 'source') {
+    body.innerHTML = `<div class="html-source">${syntaxHighlightHtml(raw)}</div>`;
+  } else {
+    body.innerHTML = buildSrcdoc(raw);
+  }
+  body.setAttribute('data-b64', b64);  // restore after innerHTML wipe
+}
+
+// ─── HTML syntax highlighter ──────────────────────────────────────────────
+function syntaxHighlightHtml(raw) {
+  let safe = escHtml(raw);
+  safe = safe.replace(/(&lt;!DOCTYPE[^&]*&gt;)/gi, '<span class="hl-doctype">$1</span>');
+  safe = safe.replace(/(&lt;!--[\s\S]*?--&gt;)/g,  '<span class="hl-cmt">$1</span>');
+  return safe.replace(/(&lt;\/?[a-z0-9]+)(.*?)(&gt;)/gi, (_, tagStart, middle, tagEnd) => {
+    const hiAttrs = middle.replace(/([a-z-]+)=(&quot;.*?&quot;|&#39;.*?&#39;)/gi,
+      ' <span class="hl-attr">$1</span>=<span class="hl-val">$2</span>');
+    return `<span class="hl-tag">${tagStart}</span>${hiAttrs}<span class="hl-tag">${tagEnd}</span>`;
+  });
+}
+
+// ─── MIME tree ────────────────────────────────────────────────────────────
+function renderMimeNode(node) {
+  const fn    = node.filename ? `<span class="mime-fn">📎 ${escHtml(node.filename)}</span>` : '';
+  const dis   = node.content_disposition ? `<span class="mime-dis">[${escHtml(node.content_disposition)}]</span>` : '';
+  const enc   = node.content_transfer_encoding ? `<span class="mime-enc">${escHtml(node.content_transfer_encoding)}</span>` : '';
+  const trunc = node.truncated ? '<span style="color:var(--warn);font-size:10px"> [truncated]</span>' : '';
+  let html = `<div class="mime-node"><span class="mime-type">${escHtml(node.content_type)}</span>${dis}${fn}${enc}${trunc}`;
+  if (node.children && node.children.length) html += node.children.map(renderMimeNode).join('');
+  return html + '</div>';
+}
+
+// ─── IOC tab switching ────────────────────────────────────────────────────
+function switchIocTab(id, btn) {
+  const body = btn.closest('.section-body');
+  body.querySelectorAll('.ioc-tab').forEach(b => b.classList.remove('active'));
+  body.querySelectorAll('.ioc-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── Copy with fallback ───────────────────────────────────────────────────
+// Text is stored in data-copy attribute to avoid inline JS quoting issues.
+// JSON.stringify() inside onclick="..." produces outer double-quotes that
+// break the HTML attribute — data attributes have no such problem.
+function copyText(btn) {
+  const text = btn.getAttribute('data-copy') || '';
+  const orig = btn.textContent;
+  const ok  = () => { btn.textContent='Copied!'; btn.classList.add('copied'); setTimeout(()=>{ btn.textContent=orig; btn.classList.remove('copied'); },1500); };
+  const err = () => { btn.textContent='Failed!'; setTimeout(()=>{ btn.textContent=orig; },1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(ok).catch(err);
+  } else {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); ok();
+    } catch { err(); }
+  }
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────
+function b64DecodeUnicode(b64) {
+  try {
+    const binary = atob(b64);
+    const bytes  = Uint8Array.from(binary, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch { return ''; }
 }
 
 function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 </script>
 </body>
