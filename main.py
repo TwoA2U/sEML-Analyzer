@@ -442,7 +442,7 @@ def _parse_eml(raw: str | bytes) -> dict:
             "from":             {"raw": from_raw, "name": from_name, "address": from_addr},
             "to": to_list, "cc": cc_list, "bcc": bcc_list,
             "reply_to":         {"raw": reply_raw, "address": reply_addr, "mismatch": reply_mismatch},
-            "subject":          h("Subject"),
+            "subject":          _decode_header_value(h("Subject")),
             "date":             {"raw": date_raw, "iso": date_iso},
             "message_id":       h("Message-ID"),
             "mime_version":     h("MIME-Version"),
