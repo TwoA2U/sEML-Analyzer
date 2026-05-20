@@ -1,1367 +1,762 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EML Analyzer · Email Forensics</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne+Mono&family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg:          #060810;
-  --surface:     #0c0f1a;
-  --surface2:    #111420;
-  --border:      #1a1f32;
-  --border2:     #252b42;
-  --accent:      #4fffce;
-  --accent-dim:  rgba(79,255,206,.08);
-  --accent2:     #6b8fff;
-  --warn:        #ffca3a;
-  --danger:      #ff5370;
-  --text:        #b8c2d8;
-  --text-dim:    #4a5270;
-  --text-bright: #e8edf8;
-  --mono:        'DM Mono', monospace;
-  --display:     'Syne', sans-serif;
-  --code:        'Syne Mono', monospace;
-}
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>EML Analyzer · Signal Intelligence</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="static/eml-analyzer.css" />
+    </head>
+    <body>
+        <div class="vignette"></div>
+        <div class="corner-glow"></div>
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        <div class="app">
+            <!-- ── Header ── -->
+            <header>
+                <div class="logo-wrap">
+                    <div class="logo-mark">
+                        <svg
+                            viewBox="0 0 18 18"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <rect x="2" y="4" width="14" height="10" rx=".5" />
+                            <polyline points="2,4 9,10 16,4" />
+                        </svg>
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-name">EML Analyzer</span>
+                        <span class="logo-sub"
+                            >Signal Intelligence · Email Forensics</span
+                        >
+                    </div>
+                </div>
+                <div class="header-meta">
+                    <div class="meta-readout">
+                        <span class="meta-key">Mode</span>
+                        <span class="meta-val">DFIR</span>
+                    </div>
+                    <div class="meta-readout">
+                        <span class="meta-key">Engine</span>
+                        <span class="meta-val">v2</span>
+                    </div>
+                </div>
+            </header>
 
-html { scroll-behavior: smooth; }
+            <!-- ── Input card ── -->
+            <div class="input-card">
+                <div class="mode-selector">
+                    <button
+                        class="mode-btn active"
+                        onclick="switchTab('file', this)"
+                    >
+                        <svg
+                            class="mode-icon"
+                            viewBox="0 0 14 14"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <rect x="2" y="1" width="9" height="12" rx=".5" />
+                            <polyline points="8,1 8,5 11,5" />
+                            <path d="M11 5 L8 1" />
+                        </svg>
+                        Upload .eml File
+                        <span class="mode-btn-num">01</span>
+                    </button>
+                    <button class="mode-btn" onclick="switchTab('text', this)">
+                        <svg
+                            class="mode-icon"
+                            viewBox="0 0 14 14"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <path d="M2 4h10M2 7h7M2 10h5" />
+                        </svg>
+                        Paste Headers / Raw
+                        <span class="mode-btn-num">02</span>
+                    </button>
+                </div>
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 13px;
-  min-height: 100vh;
-  line-height: 1.6;
-  overflow-x: hidden;
-}
+                <div id="tab-file" class="mode-panel active">
+                    <div class="dropzone" id="dropzone">
+                        <input
+                            type="file"
+                            id="fileInput"
+                            accept=".eml,.msg,message/rfc822,text/plain"
+                        />
+                        <div class="drop-reticle">
+                            <div class="reticle-ring ring-outer"></div>
+                            <div class="reticle-ring ring-inner"></div>
+                            <div class="reticle-lines"></div>
+                            <svg viewBox="0 0 16 16" fill="none">
+                                <path
+                                    d="M8 11V5M5 8l3-3 3 3"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                                <path
+                                    d="M2 12v1h12v-1"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                        </div>
+                        <div class="drop-title">Drop .eml file here</div>
+                        <div class="drop-sub">
+                            or click to browse —<span>.eml</span
+                            ><span>.msg</span><span>text/plain</span>
+                        </div>
+                    </div>
+                    <div
+                        id="file-loaded"
+                        style="display: none"
+                        class="file-loaded"
+                    >
+                        <div class="file-loaded-icon">
+                            <svg
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <rect
+                                    x="2"
+                                    y="1"
+                                    width="9"
+                                    height="12"
+                                    rx=".5"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                />
+                                <polyline
+                                    points="8,1 8,5 11,5"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                />
+                            </svg>
+                        </div>
+                        <span class="file-name-text" id="file-name"></span>
+                        <span class="file-loaded-meta" id="file-size"></span>
+                    </div>
+                </div>
 
-/* ── Subtle grid bg ── */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(79,255,206,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79,255,206,.025) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
-}
+                <div id="tab-text" class="mode-panel">
+                    <div class="textarea-wrap">
+                        <textarea
+                            id="rawInput"
+                            placeholder="From: sender@example.com&#10;To: recipient@example.com&#10;Subject: Test Email&#10;Date: Mon, 1 Jan 2025 12:00:00 +0000&#10;Received: from mail.example.com ...&#10;Authentication-Results: spf=pass dkim=pass dmarc=pass&#10;..."
+                        ></textarea>
+                    </div>
+                </div>
 
-/* ── Ambient glow ── */
-body::after {
-  content: '';
-  position: fixed;
-  top: -200px;
-  left: -200px;
-  width: 700px;
-  height: 700px;
-  background: radial-gradient(circle, rgba(79,255,206,.04) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
+                <div class="action-row">
+                    <button
+                        class="btn btn-primary"
+                        id="analyze-btn"
+                        onclick="analyzeActive()"
+                    >
+                        <svg
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.6"
+                        >
+                            <circle cx="5" cy="5" r="4" />
+                            <path d="M8.5 8.5l2.5 2.5" />
+                        </svg>
+                        Analyze
+                    </button>
+                    <button class="btn btn-ghost" onclick="clearAll()">
+                        Clear
+                    </button>
+                    <span class="action-hint">
+                        <span id="active-mode-hint"
+                            >File upload mode active</span
+                        >
+                        <span class="cursor-blink"></span>
+                    </span>
+                </div>
+            </div>
 
-.app {
-  position: relative;
-  z-index: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 48px 80px;
-}
+            <!-- ── Results ── -->
+            <div id="results">
+                <div class="spacer-lg"></div>
 
-/* ── Header ── */
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 56px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid var(--border);
-  position: relative;
-}
+                <div class="results-header">
+                    <div>
+                        <span class="results-label"
+                            >Output · Analysis Report</span
+                        >
+                        <span class="results-title-text">Signal Results</span>
+                    </div>
+                    <span id="parse-status" class="status-badge badge-ok"
+                        ><span class="dot"></span> Parsed OK</span
+                    >
+                </div>
 
-header::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 120px;
-  height: 1px;
-  background: var(--accent);
-}
+                <div id="error-box" class="error-box" style="display: none">
+                    <svg
+                        class="err-icon"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                    >
+                        <circle cx="7" cy="7" r="6" />
+                        <path d="M7 4v3.5M7 9.5v.5" />
+                    </svg>
+                    <span id="error-text"></span>
+                </div>
 
-.logo-wrap { display: flex; align-items: center; gap: 18px; }
-
-.logo-mark {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.logo-mark::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--border2);
-  transform: rotate(45deg);
-}
-.logo-mark::after {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border: 1px solid var(--accent);
-  transform: rotate(45deg);
-  opacity: .5;
-}
-.logo-mark svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  position: relative;
-  z-index: 1;
-}
-
-.logo-text {}
-.logo-name {
-  font-family: var(--display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-bright);
-  letter-spacing: .02em;
-  line-height: 1;
-  display: block;
-}
-.logo-sub {
-  font-family: var(--code);
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  display: block;
-  margin-top: 3px;
-}
-
-.header-meta {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.meta-badge {
-  font-family: var(--code);
-  font-size: 10px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 5px 12px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-}
-.meta-badge span { color: var(--accent); margin-left: 6px; }
-
-/* ── Input card ── */
-.input-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  margin-bottom: 24px;
-  position: relative;
-}
-
-/* ── Mode selector ── */
-.mode-selector {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-}
-.mode-btn {
-  flex: 1;
-  font-family: var(--code);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 14px 20px;
-  background: none;
-  border: none;
-  border-right: 1px solid var(--border);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: color .2s, background .2s;
-  position: relative;
-}
-.mode-btn:last-child { border-right: none; }
-.mode-btn::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity .2s;
-}
-.mode-btn:hover { color: var(--text); background: rgba(255,255,255,.01); }
-.mode-btn.active { color: var(--accent); }
-.mode-btn.active::after { opacity: 1; }
-.mode-icon {
-  width: 14px;
-  height: 14px;
-  opacity: .5;
-}
-.mode-btn.active .mode-icon { opacity: 1; }
-
-/* ── Panel body ── */
-.mode-panel { display: none; padding: 28px; }
-.mode-panel.active { display: block; }
-
-/* ── Drop zone ── */
-.dropzone {
-  border: 1px dashed var(--border2);
-  padding: 48px 40px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color .2s, background .2s;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-.dropzone:hover, .dropzone.dragover {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-}
-.dropzone input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-}
-
-.drop-glyph {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border2);
-  margin-bottom: 6px;
-  color: var(--text-dim);
-}
-.dropzone:hover .drop-glyph,
-.dropzone.dragover .drop-glyph {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.drop-glyph svg { width: 18px; height: 18px; }
-
-.drop-title {
-  font-family: var(--display);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-}
-.drop-sub {
-  font-family: var(--code);
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: .08em;
-}
-
-.file-loaded {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: var(--accent-dim);
-  border: 1px solid rgba(79,255,206,.2);
-  font-size: 12px;
-  color: var(--accent);
-}
-.file-loaded-icon {
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(79,255,206,.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.file-loaded-icon svg { width: 14px; height: 14px; stroke: var(--accent); }
-.file-loaded-meta { margin-left: auto; color: var(--text-dim); font-size: 11px; }
-
-/* ── Textarea ── */
-textarea {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 12px;
-  padding: 18px;
-  resize: vertical;
-  min-height: 220px;
-  line-height: 1.75;
-  outline: none;
-  transition: border-color .2s;
-}
-textarea:focus { border-color: var(--border2); }
-textarea::placeholder { color: var(--text-dim); opacity: .6; }
-
-/* ── Action row ── */
-.action-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 20px 28px;
-  border-top: 1px solid var(--border);
-  background: var(--surface2);
-}
-
-.btn {
-  font-family: var(--code);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  padding: 11px 28px;
-  border: none;
-  cursor: pointer;
-  transition: background .15s, color .15s, box-shadow .15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.btn svg { width: 12px; height: 12px; flex-shrink: 0; }
-
-.btn-primary {
-  background: var(--accent);
-  color: #020408;
-  position: relative;
-}
-.btn-primary:hover {
-  background: #6fffd8;
-  box-shadow: 0 0 24px rgba(79,255,206,.3);
-}
-.btn-primary:active { background: #3de0b4; }
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--text-dim);
-}
-.btn-ghost:hover {
-  border-color: var(--text-dim);
-  color: var(--text);
-}
-
-.action-hint {
-  margin-left: auto;
-  font-family: var(--code);
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: .06em;
-}
-
-/* ── Results ── */
-#results { display: none; animation: slideUp .4s ease; }
-#results.visible { display: block; }
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.results-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-  position: relative;
-}
-.results-header::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 60px;
-  height: 1px;
-  background: var(--accent);
-}
-
-.results-label {
-  font-family: var(--code);
-  font-size: 10px;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  display: block;
-  margin-bottom: 6px;
-}
-.results-title-text {
-  font-family: var(--display);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-bright);
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  font-family: var(--code);
-  font-size: 10px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-.badge-ok   { background: rgba(79,255,206,.08); color: var(--accent); border: 1px solid rgba(79,255,206,.2); }
-.badge-warn { background: rgba(255,202,58,.08); color: var(--warn);   border: 1px solid rgba(255,202,58,.2); }
-.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-
-/* ── Summary strip ── */
-.summary-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1px;
-  background: var(--border);
-  margin-bottom: 28px;
-  border: 1px solid var(--border);
-}
-.summary-card {
-  background: var(--surface);
-  padding: 18px 20px;
-  position: relative;
-  overflow: hidden;
-  transition: background .2s;
-}
-.summary-card:hover { background: var(--surface2); }
-.summary-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 2px;
-  height: 0;
-  background: var(--accent);
-  transition: height .3s ease;
-}
-.summary-card:hover::before { height: 100%; }
-.sc-label {
-  font-family: var(--code);
-  font-size: 9px;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 8px;
-}
-.sc-value {
-  font-family: var(--display);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-bright);
-  word-break: break-all;
-}
-.sc-value.accent { color: var(--accent); }
-.sc-value.warn   { color: var(--warn); }
-
-/* ── Sections ── */
-.sections-wrap { display: flex; flex-direction: column; gap: 8px; }
-
-.section {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  overflow: hidden;
-  transition: border-color .2s;
-}
-.section:hover { border-color: var(--border2); }
-
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 13px 20px;
-  cursor: pointer;
-  user-select: none;
-  transition: background .15s;
-}
-.section-head:hover { background: var(--surface2); }
-
-.section-head-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.section-indicator {
-  width: 6px;
-  height: 6px;
-  border: 1px solid var(--accent);
-  transform: rotate(45deg);
-  flex-shrink: 0;
-  opacity: .5;
-  transition: opacity .2s, background .2s;
-}
-.section:not(.collapsed) .section-indicator {
-  background: var(--accent);
-  opacity: 1;
-}
-
-.section-name {
-  font-family: var(--code);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-.section-count {
-  font-family: var(--code);
-  font-size: 9px;
-  color: var(--text-dim);
-  background: var(--border);
-  padding: 2px 8px;
-  letter-spacing: .06em;
-}
-
-.chevron-wrap {
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform .2s;
-}
-.section.collapsed .chevron-wrap { transform: rotate(-90deg); }
-.chevron-wrap svg { width: 10px; height: 10px; stroke: var(--text-dim); }
-
-.section-body { overflow: hidden; }
-.section.collapsed .section-body { display: none; }
-
-/* ── KV table ── */
-.kv-table { width: 100%; border-collapse: collapse; }
-.kv-table tr { border-bottom: 1px solid var(--border); }
-.kv-table tr:last-child { border-bottom: none; }
-.kv-table tr:hover td { background: rgba(255,255,255,.01); }
-.kv-table td {
-  padding: 10px 20px;
-  vertical-align: top;
-  font-size: 12px;
-  line-height: 1.65;
-}
-.kv-table td:first-child {
-  width: 200px;
-  font-family: var(--code);
-  font-size: 10px;
-  letter-spacing: .06em;
-  color: var(--text-dim);
-  white-space: nowrap;
-  padding-right: 16px;
-}
-.kv-table td:last-child { color: var(--text); word-break: break-word; }
-
-/* ── Auth ── */
-.auth-block { border-bottom: 1px solid var(--border); }
-.auth-block:last-child { border-bottom: none; }
-.auth-proto-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 20px 6px; }
-.auth-proto-name {
-  width: 54px;
-  font-family: var(--code);
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding-top: 3px;
-  flex-shrink: 0;
-}
-.auth-clause { font-size: 11px; color: var(--text); line-height: 1.75; flex: 1; word-break: break-all; }
-.auth-raw-block {
-  margin: 0 20px 14px;
-  padding: 12px 16px;
-  background: var(--bg);
-  font-size: 11px;
-  color: var(--text-dim);
-  white-space: pre-wrap;
-  word-break: break-all;
-  line-height: 1.75;
-  border-left: 2px solid var(--border2);
-}
-
-.pill {
-  padding: 3px 10px;
-  font-family: var(--code);
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
-.pill-pass { background: rgba(79,255,206,.1);  color: var(--accent); }
-.pill-fail { background: rgba(255,83,112,.1);  color: var(--danger); }
-.pill-none { background: rgba(74,82,112,.2);   color: var(--text-dim); }
-
-/* ── Hop table ── */
-.hop-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.hop-table th {
-  padding: 9px 14px;
-  background: var(--bg);
-  font-family: var(--code);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-.hop-table td {
-  padding: 11px 14px;
-  vertical-align: top;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-  word-break: break-word;
-}
-.hop-table tr:last-child td { border-bottom: none; }
-.hop-table tr.hop-raw-row td {
-  padding: 3px 14px 12px;
-  font-family: var(--code);
-  font-size: 10px;
-  color: var(--text-dim);
-  word-break: break-all;
-  background: var(--bg);
-}
-.hop-table tr:hover:not(.hop-raw-row) td { background: rgba(255,255,255,.015); }
-.hop-idx {
-  color: var(--accent) !important;
-  font-family: var(--code);
-  font-size: 10px;
-  width: 32px;
-  text-align: center;
-}
-
-.hop-delay {
-  display: inline-block;
-  padding: 3px 9px;
-  font-family: var(--code);
-  font-size: 10px;
-  letter-spacing: .04em;
-}
-.hop-delay-slow { background: rgba(255,202,58,.1); color: var(--warn); }
-.hop-delay-fast { background: rgba(79,255,206,.1); color: var(--accent); }
-.hop-delay-neg  { background: rgba(255,83,112,.1); color: var(--danger); }
-.hop-delay-dash { color: var(--text-dim); }
-
-/* ── IOC ── */
-.ioc-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 14px 20px 0;
-  border-bottom: 1px solid var(--border);
-}
-.ioc-tab {
-  font-family: var(--code);
-  font-size: 10px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: 8px 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color .15s, border-color .15s;
-}
-.ioc-tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
-.ioc-tab:hover  { color: var(--text); }
-.ioc-panel { display: none; }
-.ioc-panel.active { display: block; }
-
-.ioc-item {
-  display: flex;
-  align-items: center;
-  padding: 9px 20px;
-  border-bottom: 1px solid var(--border);
-  gap: 12px;
-  transition: background .1s;
-}
-.ioc-item:last-child { border-bottom: none; }
-.ioc-item:hover { background: rgba(255,255,255,.015); }
-.ioc-val {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--accent2);
-  flex: 1;
-  word-break: break-all;
-}
-.ioc-val.url  { color: #c084fc; }
-.ioc-val.hash { font-size: 11px; color: var(--accent); }
-.ioc-fname {
-  font-family: var(--code);
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-bottom: 3px;
-}
-.ioc-empty {
-  padding: 18px 20px;
-  font-family: var(--code);
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: .06em;
-}
-
-/* ── Copy buttons ── */
-.copy-btn {
-  flex-shrink: 0;
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--text-dim);
-  font-family: var(--code);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  cursor: pointer;
-  transition: border-color .15s, color .15s;
-}
-.copy-btn:hover  { border-color: var(--accent); color: var(--accent); }
-.copy-btn.copied { border-color: var(--accent); color: var(--accent); }
-.copy-all-btn { font-size: 10px; padding: 5px 14px; }
-
-.ioc-toolbar {
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* ── Attachments ── */
-.attach-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-}
-.attach-row:last-child { border-bottom: none; }
-
-.attach-icon-wrap {
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--border2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.attach-icon-wrap svg { width: 14px; height: 14px; stroke: var(--accent2); }
-
-.attach-name {
-  color: var(--text-bright);
-  font-size: 12px;
-  flex: 1;
-}
-.attach-type {
-  font-family: var(--code);
-  font-size: 10px;
-  letter-spacing: .06em;
-  color: var(--text-dim);
-}
-.attach-size {
-  font-family: var(--code);
-  font-size: 11px;
-  color: var(--text-dim);
-}
-.dl-btn {
-  flex-shrink: 0;
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--text-dim);
-  font-family: var(--code);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: border-color .15s, color .15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.dl-btn:hover { border-color: var(--warn); color: var(--warn); }
-.attach-hash {
-  padding: 0 20px 10px;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text-dim);
-}
-.attach-hash span { color: var(--accent); }
-
-/* ── HTML viewer ── */
-.html-toolbar {
-  display: flex;
-  gap: 6px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-  align-items: center;
-}
-.html-tb-label {
-  font-family: var(--code);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-right: 6px;
-}
-.html-toolbar button {
-  font-family: var(--code);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: 5px 14px;
-  border: 1px solid var(--border2);
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all .15s;
-}
-.html-toolbar button.active {
-  border-color: var(--accent2);
-  color: var(--accent2);
-  background: rgba(107,143,255,.06);
-}
-.html-toolbar button:hover { border-color: var(--text-dim); color: var(--text); }
-
-.html-frame {
-  width: 100%;
-  height: 520px;
-  border: none;
-  background: #fff;
-  display: block;
-}
-.html-source {
-  background: var(--bg);
-  padding: 16px 20px;
-  font-size: 11px;
-  line-height: 1.85;
-  white-space: pre;
-  overflow: auto;
-  max-height: 520px;
-  color: #9aacca;
-  font-family: var(--mono);
-}
-.hl-tag     { color: #e06c75; }
-.hl-attr    { color: #d19a66; }
-.hl-val     { color: #98c379; }
-.hl-cmt     { color: #4a5270; font-style: italic; }
-.hl-doctype { color: #4a5270; }
-
-/* ── MIME tree ── */
-.mime-wrap { padding: 16px 20px; }
-.mime-node {
-  border-left: 1px solid var(--border2);
-  margin-left: 16px;
-  padding: 5px 12px;
-  font-size: 11px;
-}
-.mime-node:first-child { margin-left: 0; border-left: none; padding-left: 0; }
-.mime-type { color: var(--accent2); font-family: var(--mono); }
-.mime-dis  { color: var(--text-dim); font-size: 10px; margin-left: 8px; }
-.mime-fn   { color: var(--warn); font-size: 10px; margin-left: 8px; }
-.mime-enc  { color: var(--text-dim); font-size: 10px; margin-left: 8px; }
-
-/* ── Raw block ── */
-.raw-block {
-  background: var(--bg);
-  padding: 18px 20px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 340px;
-  overflow-y: auto;
-  line-height: 1.85;
-}
-.raw-block .h-name { color: var(--accent2); }
-.raw-block .h-val  { color: var(--text); }
-
-/* ── Error box ── */
-.error-box {
-  border: 1px solid rgba(255,83,112,.3);
-  background: rgba(255,83,112,.04);
-  padding: 16px 20px;
-  color: var(--danger);
-  font-family: var(--mono);
-  font-size: 12px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.err-icon { flex-shrink: 0; margin-top: 1px; }
-
-/* ── X-Headers ── */
-.xhdr-vendor {
-  padding: 8px 20px 4px;
-  font-family: var(--code);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--accent2);
-  border-bottom: 1px solid var(--border);
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border2); }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-
-/* ── Spacer ── */
-.spacer-lg { height: 40px; }
-.spacer-sm { height: 16px; }
-</style>
-</head>
-<body>
-<div class="app">
-
-  <!-- ── Header ── -->
-  <header>
-    <div class="logo-wrap">
-      <div class="logo-mark">
-        <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="4" width="14" height="10" rx=".5"/>
-          <polyline points="2,4 9,10 16,4"/>
-        </svg>
-      </div>
-      <div class="logo-text">
-        <span class="logo-name">EML Analyzer</span>
-        <span class="logo-sub">Email Forensics Tool</span>
-      </div>
-    </div>
-    <div class="header-meta">
-      <div class="meta-badge">Mode <span>DFIR</span></div>
-      <div class="meta-badge">Engine <span>v2</span></div>
-    </div>
-  </header>
-
-  <!-- ── Input card ── -->
-  <div class="input-card">
-    <div class="mode-selector">
-      <button class="mode-btn active" onclick="switchTab('file',this)">
-        <svg class="mode-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="2" y="1" width="9" height="12" rx=".5"/>
-          <polyline points="8,1 8,5 11,5"/>
-          <path d="M11 5 L8 1"/>
-        </svg>
-        Upload .eml File
-      </button>
-      <button class="mode-btn" onclick="switchTab('text',this)">
-        <svg class="mode-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M2 4h10M2 7h7M2 10h5"/>
-        </svg>
-        Paste Headers / Raw
-      </button>
-    </div>
-
-    <div id="tab-file" class="mode-panel active">
-      <div class="dropzone" id="dropzone">
-        <input type="file" id="fileInput" accept=".eml,.msg,message/rfc822,text/plain">
-        <div class="drop-glyph">
-          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 12V4M6 7l3-3 3 3"/>
-            <path d="M3 13v2h12v-2"/>
-          </svg>
+                <div class="summary-strip" id="summary-strip"></div>
+                <div class="sections-wrap" id="sections-container"></div>
+            </div>
         </div>
-        <div class="drop-title">Drop .eml file here</div>
-        <div class="drop-sub">or click to browse — .eml · .msg · text/plain</div>
-      </div>
-      <div id="file-loaded" style="display:none" class="file-loaded">
-        <div class="file-loaded-icon">
-          <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="1" width="9" height="12" rx=".5" stroke="currentColor" stroke-width="1.3"/>
-            <polyline points="8,1 8,5 11,5" stroke="currentColor" stroke-width="1.3"/>
-          </svg>
-        </div>
-        <span id="file-name"></span>
-        <span class="file-loaded-meta" id="file-size"></span>
-      </div>
-    </div>
+        <!-- /.app -->
 
-    <div id="tab-text" class="mode-panel">
-      <textarea id="rawInput" placeholder="Paste raw email headers or full EML content here...
+        <script>
+            // ══ Tab switching ═══════════════════════════════════════════════════════════
+            let activeTabId = "file";
+            function switchTab(id, btn) {
+                activeTabId = id;
+                document
+                    .querySelectorAll(".mode-btn")
+                    .forEach((b) => b.classList.remove("active"));
+                document
+                    .querySelectorAll(".mode-panel")
+                    .forEach((p) => p.classList.remove("active"));
+                btn.classList.add("active");
+                document.getElementById("tab-" + id).classList.add("active");
+                document.getElementById("active-mode-hint").textContent =
+                    id === "file"
+                        ? "File upload mode active"
+                        : "Paste mode active";
+            }
 
-From: sender@example.com
-To: recipient@example.com
-Subject: Test Email
-Date: Mon, 1 Jan 2025 12:00:00 +0000
-Received: from mail.example.com ...
-Authentication-Results: spf=pass dkim=pass dmarc=pass
-..."></textarea>
-    </div>
+            function toggleSection(i) {
+                document
+                    .getElementById("sec-" + i)
+                    .classList.toggle("collapsed");
+            }
 
-    <div class="action-row">
-      <button class="btn btn-primary" onclick="analyzeActive()">
-        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="5" cy="5" r="4"/>
-          <path d="M8.5 8.5l2.5 2.5"/>
-        </svg>
-        Analyze
-      </button>
-      <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
-      <span class="action-hint" id="active-mode-hint">File upload mode active</span>
-    </div>
-  </div>
+            // ══ File handling ═══════════════════════════════════════════════════════════
+            let loadedFile = null;
+            let loadedFileContent = null;
+            let isAnalyzing = false;
+            let renderCounter = 0;
+            const htmlBodyStore = new Map();
+            const dropzone = document.getElementById("dropzone");
+            const fileInput = document.getElementById("fileInput");
 
-  <!-- ── Results ── -->
-  <div id="results">
-    <div class="spacer-lg"></div>
+            dropzone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                dropzone.classList.add("dragover");
+            });
+            dropzone.addEventListener("dragleave", () =>
+                dropzone.classList.remove("dragover"),
+            );
+            dropzone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dropzone.classList.remove("dragover");
+                const f = e.dataTransfer.files[0];
+                if (f) loadFile(f);
+            });
+            fileInput.addEventListener("change", () => {
+                if (fileInput.files[0]) loadFile(fileInput.files[0]);
+            });
 
-    <div class="results-header">
-      <div>
-        <span class="results-label">Output</span>
-        <span class="results-title-text">Analysis Results</span>
-      </div>
-      <span id="parse-status" class="status-badge badge-ok"><span class="dot"></span> Parsed OK</span>
-    </div>
+            function loadFile(f) {
+                loadedFile = f;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    loadedFileContent = e.target.result;
+                    dropzone.style.display = "none";
+                    document.getElementById("file-loaded").style.display =
+                        "flex";
+                    document.getElementById("file-name").textContent = f.name;
+                    document.getElementById("file-size").textContent =
+                        formatBytes(f.size);
+                };
+                reader.readAsText(f);
+            }
 
-    <div id="error-box" class="error-box" style="display:none">
-      <svg class="err-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="7" cy="7" r="6"/>
-        <path d="M7 4v3.5M7 9.5v.5"/>
-      </svg>
-      <span id="error-text"></span>
-    </div>
+            function clearAll() {
+                loadedFile = null;
+                loadedFileContent = null;
+                fileInput.value = "";
+                dropzone.style.display = "block";
+                document.getElementById("file-loaded").style.display = "none";
+                document.getElementById("rawInput").value = "";
+                document.getElementById("error-box").style.display = "none";
+                document.getElementById("summary-strip").innerHTML = "";
+                document.getElementById("sections-container").innerHTML = "";
+                document.querySelector(".results-title-text").textContent =
+                    "Analysis Results";
+                setStatus("neutral", "Idle");
+                setAnalyzeState(false);
+                document.getElementById("results").classList.remove("visible");
+            }
 
-    <div class="summary-strip" id="summary-strip"></div>
+            function formatBytes(b) {
+                if (b < 1024) return b + " B";
+                if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+                return (b / 1048576).toFixed(1) + " MB";
+            }
 
-    <div class="sections-wrap" id="sections-container"></div>
-  </div>
+            // ══ Analyze dispatcher ══════════════════════════════════════════════════════
+            function analyzeActive() {
+                if (isAnalyzing) return;
+                if (activeTabId === "file") analyzeFile();
+                else analyzeText();
+            }
 
-</div><!-- /.app -->
+            // ══ Backend API ═════════════════════════════════════════════════════════════
+            async function callBackend(endpoint, payload) {
+                let resp;
+                try {
+                    if (endpoint === "file") {
+                        const fd = new FormData();
+                        fd.append("file", payload);
+                        resp = await fetch("/analyze/file", {
+                            method: "POST",
+                            body: fd,
+                        });
+                    } else {
+                        resp = await fetch("/analyze/text", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ raw: payload }),
+                        });
+                    }
+                } catch {
+                    throw new Error(
+                        "Could not reach server - is the backend running?",
+                    );
+                }
+                if (!resp.ok) {
+                    const err = await resp
+                        .json()
+                        .catch(() => ({ error: resp.statusText }));
+                    throw new Error(
+                        `HTTP ${resp.status}: ${err.error || resp.statusText || "Server error"}`,
+                    );
+                }
+                return resp.json();
+            }
 
-<script>
-// ══ Tab switching ═══════════════════════════════════════════════════════════
-let activeTabId = 'file';
-function switchTab(id, btn) {
-  activeTabId = id;
-  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-' + id).classList.add('active');
-  document.getElementById('active-mode-hint').textContent =
-    id === 'file' ? 'File upload mode active' : 'Paste mode active';
-}
+            async function runAnalyze(endpoint, payload) {
+                setAnalyzeState(true);
+                setStatus("warn", "Parsing...");
+                document.getElementById("error-box").style.display = "none";
+                try {
+                    renderFromBackend(await callBackend(endpoint, payload));
+                } catch (e) {
+                    showError(e.message);
+                } finally {
+                    setAnalyzeState(false);
+                }
+            }
 
-function toggleSection(i) {
-  document.getElementById('sec-' + i).classList.toggle('collapsed');
-}
+            function analyzeFile() {
+                const file = fileInput.files[0] || loadedFile;
+                if (!file && !loadedFileContent) {
+                    alert("Please select an .eml file first.");
+                    return;
+                }
+                if (file) {
+                    runAnalyze("file", file);
+                    return;
+                }
+                runAnalyze("text", loadedFileContent);
+            }
 
-// ══ File handling ═══════════════════════════════════════════════════════════
-let loadedFileContent = null;
-const dropzone  = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
+            function analyzeText() {
+                const raw = document.getElementById("rawInput").value.trim();
+                if (!raw) {
+                    alert("Please paste some content first.");
+                    return;
+                }
+                runAnalyze("text", raw);
+            }
 
-dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-dropzone.addEventListener('drop', e => {
-  e.preventDefault(); dropzone.classList.remove('dragover');
-  const f = e.dataTransfer.files[0];
-  if (f) loadFile(f);
-});
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+            function showError(msg) {
+                const eb = document.getElementById("error-box");
+                document.getElementById("error-text").textContent = msg;
+                eb.style.display = "flex";
+                setStatus("error", "Parse Failed");
+                document.getElementById("results").classList.add("visible");
+            }
 
-function loadFile(f) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    loadedFileContent = e.target.result;
-    dropzone.style.display = 'none';
-    document.getElementById('file-loaded').style.display = 'flex';
-    document.getElementById('file-name').textContent = f.name;
-    document.getElementById('file-size').textContent = formatBytes(f.size);
-  };
-  reader.readAsText(f);
-}
+            function setAnalyzeState(loading) {
+                isAnalyzing = loading;
+                const btn = document.getElementById("analyze-btn");
+                const hint = document.getElementById("active-mode-hint");
+                const hintWrap = hint.closest(".action-hint");
+                btn.disabled = loading;
+                hintWrap.classList.toggle("loading", loading);
+                hint.textContent = loading
+                    ? "Parsing..."
+                    : activeTabId === "file"
+                      ? "File upload mode active"
+                      : "Paste mode active";
+            }
 
-function clearAll() {
-  loadedFileContent = null;
-  fileInput.value = '';
-  dropzone.style.display = 'block';
-  document.getElementById('file-loaded').style.display = 'none';
-  document.getElementById('rawInput').value = '';
-  document.getElementById('results').classList.remove('visible');
-}
+            function setStatus(kind, label) {
+                const status = document.getElementById("parse-status");
+                const cls =
+                    kind === "error"
+                        ? "badge-error"
+                        : kind === "warn"
+                          ? "badge-warn"
+                          : "badge-ok";
+                status.className = `status-badge ${cls}`;
+                status.innerHTML = `<span class="dot"></span> ${label}`;
+            }
 
-function formatBytes(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-  return (b / 1048576).toFixed(1) + ' MB';
-}
+            // ══ Main renderer ═══════════════════════════════════════════════════════════
+            function renderFromBackend(d) {
+                document.getElementById("error-box").style.display = "none";
+                const renderId = ++renderCounter;
+                const core = d.core || {};
+                const fromObj = core.from || {};
+                const auth = d.authentication || {};
+                const hops = d.received_chain || [];
+                const attaches = d.attachments || [];
+                const summary = d.summary || {};
+                const allHdrs = d.all_headers || [];
+                const xHdrs = d.x_headers || [];
+                const iocs = d.iocs || {};
+                const mime = d.mime_structure || null;
+                const bodies = d.bodies || {};
 
-// ══ Analyze dispatcher ══════════════════════════════════════════════════════
-function analyzeActive() {
-  if (activeTabId === 'file') analyzeFile();
-  else analyzeText();
-}
+                setStatus("ok", "Parsed OK");
 
-// ══ Backend API ═════════════════════════════════════════════════════════════
-async function callBackend(endpoint, payload) {
-  let resp;
-  if (endpoint === 'file') {
-    const fd = new FormData(); fd.append('file', payload);
-    resp = await fetch('/analyze/file', { method: 'POST', body: fd });
-  } else {
-    resp = await fetch('/analyze/text', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw: payload }),
-    });
-  }
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ error: resp.statusText }));
-    throw new Error(err.error || 'Server error');
-  }
-  return resp.json();
-}
-
-function analyzeFile() {
-  const file = fileInput.files[0];
-  if (!file && !loadedFileContent) { alert('Please select an .eml file first.'); return; }
-  if (!file) {
-    callBackend('text', loadedFileContent).then(renderFromBackend).catch(e => showError(e.message));
-    return;
-  }
-  callBackend('file', file).then(renderFromBackend).catch(e => showError(e.message));
-}
-
-function analyzeText() {
-  const raw = document.getElementById('rawInput').value.trim();
-  if (!raw) { alert('Please paste some content first.'); return; }
-  callBackend('text', raw).then(renderFromBackend).catch(e => showError(e.message));
-}
-
-function showError(msg) {
-  const eb = document.getElementById('error-box');
-  document.getElementById('error-text').textContent = msg;
-  eb.style.display = 'flex';
-  document.getElementById('results').classList.add('visible');
-}
-
-// ══ Main renderer ═══════════════════════════════════════════════════════════
-function renderFromBackend(d) {
-  document.getElementById('error-box').style.display = 'none';
-  const core     = d.core            || {};
-  const auth     = d.authentication  || {};
-  const hops     = d.received_chain  || [];
-  const attaches = d.attachments     || [];
-  const summary  = d.summary         || {};
-  const allHdrs  = d.all_headers     || [];
-  const xHdrs    = d.x_headers       || [];
-  const iocs     = d.iocs            || {};
-  const mime     = d.mime_structure  || null;
-  const bodies   = d.bodies          || {};
-
-  document.getElementById('parse-status').className   = 'status-badge badge-ok';
-  document.getElementById('parse-status').innerHTML   = '<span class="dot"></span> Parsed OK';
-
-  // Summary strip
-  const fromAddr = core.from ? core.from.address : '—';
-  document.getElementById('summary-strip').innerHTML = [
-    { label: 'From',          value: fromAddr || '—',                                        cls: '' },
-    { label: 'Subject',       value: core.subject || '—',                                    cls: '' },
-    { label: 'Date',          value: core.date ? (core.date.raw || '—') : '—',              cls: '' },
-    { label: 'Hops',          value: summary.hop_count ?? '—',                               cls: summary.hop_count > 5 ? 'warn' : 'accent' },
-    { label: 'IPs / Domains', value: `${(iocs.ips||[]).length} / ${(iocs.domains||[]).length}`, cls: '' },
-    { label: 'Attachments',   value: summary.attachment_count ?? 0,                          cls: summary.attachment_count ? 'warn' : '' },
-  ].map(c => `
+                // Summary strip
+                const fromAddr = fromObj.address || "—";
+                document.getElementById("summary-strip").innerHTML = [
+                    { label: "From", value: fromAddr || "—", cls: "" },
+                    { label: "Subject", value: core.subject || "—", cls: "" },
+                    {
+                        label: "Date",
+                        value: core.date ? core.date.raw || "—" : "—",
+                        cls: "",
+                    },
+                    {
+                        label: "Hops",
+                        value: summary.hop_count ?? "—",
+                        cls: summary.hop_count > 5 ? "warn" : "accent",
+                    },
+                    {
+                        label: "IPs / Domains",
+                        value: `${(iocs.ips || []).length} / ${(iocs.domains || []).length}`,
+                        cls: "",
+                    },
+                    {
+                        label: "Attachments",
+                        value: summary.attachment_count ?? 0,
+                        cls: summary.attachment_count ? "warn" : "",
+                    },
+                ]
+                    .map(
+                        (c) => `
     <div class="summary-card">
       <div class="sc-label">${c.label}</div>
       <div class="sc-value ${c.cls}">${escHtml(String(c.value))}</div>
-    </div>`).join('');
+    </div>`,
+                    )
+                    .join("");
 
-  const sections = [];
+                const sections = [];
 
-  // MIME Structure
-  if (mime) {
-    sections.push({
-      title: 'MIME Structure', count: '',
-      html: `<div class="mime-wrap">${renderMimeNode(mime)}</div>`
-    });
-  }
+                // MIME Structure
+                if (mime) {
+                    sections.push({
+                        title: "MIME Structure",
+                        count: "",
+                        html: `<div class="mime-wrap">${renderMimeNode(mime)}</div>`,
+                    });
+                }
 
-  // Core Headers
-  const mismatch = core.reply_to && core.reply_to.mismatch;
-  const toStr  = (core.to  || []).map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
-  const ccStr  = (core.cc  || []).map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
-  const bccStr = (core.bcc || []).map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', ');
-  const coreRows = [
-    ['From',             core.from ? core.from.raw : ''],
-    ['To',               toStr], ['CC', ccStr], ['BCC', bccStr],
-    ['Reply-To',         (core.reply_to?.raw || '') + (mismatch ? ' ⚠ domain mismatch' : '')],
-    ['Subject',          core.subject],
-    ['Date',             core.date ? core.date.raw : ''],
-    ['Message-ID',       core.message_id],
-    ['MIME-Version',     core.mime_version],
-    ['Content-Type',     core.content_type],
-    ['X-Mailer',         core.x_mailer],
-    ['X-Originating-IP', core.x_originating_ip],
-  ].filter(([, v]) => v);
-  sections.push({
-    title: 'Core Headers', count: coreRows.length,
-    html: `<table class="kv-table">${coreRows.map(([k, v]) => `
+                // Core Headers
+                const mismatch = core.reply_to && core.reply_to.mismatch;
+                const toStr = (core.to || [])
+                    .map((t) =>
+                        t.name ? `${t.name} <${t.address}>` : t.address,
+                    )
+                    .join(", ");
+                const ccStr = (core.cc || [])
+                    .map((t) =>
+                        t.name ? `${t.name} <${t.address}>` : t.address,
+                    )
+                    .join(", ");
+                const bccStr = (core.bcc || [])
+                    .map((t) =>
+                        t.name ? `${t.name} <${t.address}>` : t.address,
+                    )
+                    .join(", ");
+                const coreRows = [
+                    ["From", fromObj.raw || ""],
+                    ["To", toStr],
+                    ["CC", ccStr],
+                    ["BCC", bccStr],
+                    [
+                        "Reply-To",
+                        (core.reply_to?.raw || "") +
+                            (mismatch ? " ⚠ domain mismatch" : ""),
+                    ],
+                    ["Subject", core.subject],
+                    ["Date", core.date ? core.date.raw : ""],
+                    ["Message-ID", core.message_id],
+                    ["MIME-Version", core.mime_version],
+                    ["Content-Type", core.content_type],
+                    ["X-Mailer", core.x_mailer],
+                    ["X-Originating-IP", core.x_originating_ip],
+                ].filter(([, v]) => v);
+                sections.push({
+                    title: "Core Headers",
+                    count: coreRows.length,
+                    html: `<table class="kv-table">${coreRows
+                        .map(
+                            ([k, v]) => `
       <tr>
         <td>${escHtml(k)}</td>
-        <td style="${k === 'Reply-To' && mismatch ? 'color:var(--warn)' : ''}">${escHtml(v)}</td>
-      </tr>`).join('')}</table>`
-  });
+        <td style="${k === "Reply-To" && mismatch ? "color:var(--warn)" : ""}">${escHtml(v)}</td>
+      </tr>`,
+                        )
+                        .join("")}</table>`,
+                });
 
-  // Authentication
-  if (auth.raw) {
-    const checks = auth.checks || [];
-    let authHtml = '';
-    if (checks.length) {
-      authHtml += checks.map(c => {
-        const pass = ['pass', 'bestguesspass'].includes(c.result);
-        const fail = ['fail', 'hardfail', 'softfail', 'none', 'permerror', 'temperror'].includes(c.result);
-        const pillCls = pass ? 'pill-pass' : fail ? 'pill-fail' : 'pill-none';
-        return `<div class="auth-block">
+                // Authentication
+                if (auth.raw) {
+                    const checks = auth.checks || [];
+                    let authHtml = "";
+                    if (checks.length) {
+                        authHtml += checks
+                            .map((c) => {
+                                const pass = ["pass", "bestguesspass"].includes(
+                                    c.result,
+                                );
+                                const fail = [
+                                    "fail",
+                                    "hardfail",
+                                    "softfail",
+                                    "none",
+                                    "permerror",
+                                    "temperror",
+                                ].includes(c.result);
+                                const pillCls = pass
+                                    ? "pill-pass"
+                                    : fail
+                                      ? "pill-fail"
+                                      : "pill-none";
+                                return `<div class="auth-block">
           <div class="auth-proto-row">
             <span class="auth-proto-name">${c.name}</span>
             <span class="pill ${pillCls}" style="flex-shrink:0;margin-top:1px">${escHtml(c.result)}</span>
-            <span class="auth-clause">${escHtml(c.clause || '')}</span>
+            <span class="auth-clause">${escHtml(c.clause || "")}</span>
           </div>
         </div>`;
-      }).join('');
-    }
-    authHtml += `<div style="padding:6px 20px 14px">
+                            })
+                            .join("");
+                    }
+                    authHtml += `<div style="padding:6px 20px 14px">
       <div style="font-family:var(--code);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;margin-top:10px">Full Authentication-Results</div>
       <div class="auth-raw-block">${escHtml(auth.raw)}</div>
     </div>`;
-    if (auth.received_spf) authHtml += `<div class="auth-block"><div class="auth-proto-row">
+                    if (auth.received_spf)
+                        authHtml += `<div class="auth-block"><div class="auth-proto-row">
       <span class="auth-proto-name">SPF HDR</span>
       <span class="auth-clause">${escHtml(auth.received_spf)}</span>
     </div></div>`;
-    if (auth.dkim_header) authHtml += `<div class="auth-block"><div class="auth-proto-row">
+                    if (auth.dkim_header)
+                        authHtml += `<div class="auth-block"><div class="auth-proto-row">
       <span class="auth-proto-name">DKIM SIG</span>
       <span class="auth-clause" style="word-break:break-all">${escHtml(auth.dkim_header)}</span>
     </div></div>`;
-    sections.push({ title: 'Authentication', count: checks.length || 1, html: authHtml });
-  }
+                    sections.push({
+                        title: "Authentication",
+                        count: checks.length || 1,
+                        html: authHtml,
+                    });
+                }
 
-  // Received Chain
-  if (hops.length) {
-    let ht = `<table class="hop-table">
+                // Received Chain
+                if (hops.length) {
+                    let ht = `<table class="hop-table">
       <thead><tr><th>#</th><th>Sender</th><th>Receiver</th><th>Protocol</th><th>Timestamp</th><th>Delay</th></tr></thead><tbody>`;
-    hops.forEach((hop, i) => {
-      const ds = hop.delay_seconds;
-      let dcls = 'hop-delay', dtxt = '—';
-      if (ds != null) {
-        dtxt = ds >= 0 ? `+${ds}s` : `${ds}s`;
-        dcls += ds < 0 ? ' hop-delay-neg' : ds < 5 ? ' hop-delay-fast' : ' hop-delay-slow';
-      } else {
-        dcls += ' hop-delay-dash';
-      }
-      const ips = hop.ips && hop.ips.length
-        ? `<br><span style="color:var(--accent2);font-family:var(--code);font-size:10px">[${escHtml(hop.ips.join(', '))}]</span>` : '';
-      ht += `<tr>
+                    hops.forEach((hop, i) => {
+                        const ds = hop.delay_seconds;
+                        let dcls = "hop-delay",
+                            dtxt = "—";
+                        if (ds != null) {
+                            dtxt = ds >= 0 ? `+${ds}s` : `${ds}s`;
+                            dcls +=
+                                ds < 0
+                                    ? " hop-delay-neg"
+                                    : ds < 5
+                                      ? " hop-delay-fast"
+                                      : " hop-delay-slow";
+                        } else {
+                            dcls += " hop-delay-dash";
+                        }
+                        const ips =
+                            hop.ips && hop.ips.length
+                                ? `<br><span style="color:var(--accent2);font-family:var(--code);font-size:10px">[${escHtml(hop.ips.join(", "))}]</span>`
+                                : "";
+                        ht += `<tr>
         <td class="hop-idx">${i + 1}</td>
-        <td>${escHtml(hop.sender || '—')}${ips}</td>
-        <td>${escHtml(hop.receiver || '—')}</td>
-        <td style="color:var(--text-dim);font-family:var(--code);font-size:11px">${escHtml(hop.protocol || '—')}</td>
-        <td style="color:var(--text-dim);font-family:var(--code);font-size:11px;white-space:nowrap">${escHtml(hop.timestamp_iso || '—')}</td>
+        <td>${escHtml(hop.sender || "—")}${ips}</td>
+        <td>${escHtml(hop.receiver || "—")}</td>
+        <td style="color:var(--text-dim);font-family:var(--code);font-size:11px">${escHtml(hop.protocol || "—")}</td>
+        <td style="color:var(--text-dim);font-family:var(--code);font-size:11px;white-space:nowrap">${escHtml(hop.timestamp_iso || "—")}</td>
         <td><span class="${dcls}">${dtxt}</span></td>
       </tr>
       <tr class="hop-raw-row"><td colspan="6">${escHtml(hop.raw)}</td></tr>`;
-    });
-    ht += '</tbody></table>';
-    sections.push({ title: 'Received Chain', count: hops.length, html: ht });
-  }
+                    });
+                    ht += "</tbody></table>";
+                    sections.push({
+                        title: "Received Chain",
+                        count: hops.length,
+                        html: ht,
+                    });
+                }
 
-  // IOC
-  const ips = iocs.ips || [], domains = iocs.domains || [], urls = iocs.urls || [], hashes = iocs.hashes || [];
-  const iocTotal = ips.length + domains.length + urls.length + hashes.length;
-  if (iocTotal > 0) {
-    const tabs = [
-      { id: 'ioc-ips',     label: `IPs (${ips.length})`,         items: ips,     cls: '',     type: 'ip'     },
-      { id: 'ioc-domains', label: `Domains (${domains.length})`, items: domains, cls: '',     type: 'domain' },
-      { id: 'ioc-urls',    label: `URLs (${urls.length})`,       items: urls,    cls: 'url',  type: 'url'    },
-      { id: 'ioc-hashes',  label: `Hashes (${hashes.length})`,   items: hashes,  cls: 'hash', type: 'hash'   },
-    ];
-    const tabBar = tabs.map((t, i) =>
-      `<button class="ioc-tab${i === 0 ? ' active' : ''}" onclick="switchIocTab('${t.id}',this)">${t.label}</button>`
-    ).join('');
-    const panels = tabs.map((t, i) => {
-      const copyAllText = t.type === 'hash' ? hashes.map(h => h.sha256).join('\n') : t.items.join('\n');
-      let inner = '';
-      if (t.type === 'hash') {
-        inner = hashes.length
-          ? hashes.map(h => `<div class="ioc-item">
+                // IOC
+                const ips = iocs.ips || [],
+                    domains = iocs.domains || [],
+                    urls = iocs.urls || [],
+                    hashes = iocs.hashes || [];
+                const iocTotal =
+                    ips.length + domains.length + urls.length + hashes.length;
+                if (iocTotal > 0) {
+                    const tabs = [
+                        {
+                            id: `ioc-ips-${renderId}`,
+                            label: `IPs (${ips.length})`,
+                            items: ips,
+                            cls: "",
+                            type: "ip",
+                        },
+                        {
+                            id: `ioc-domains-${renderId}`,
+                            label: `Domains (${domains.length})`,
+                            items: domains,
+                            cls: "",
+                            type: "domain",
+                        },
+                        {
+                            id: `ioc-urls-${renderId}`,
+                            label: `URLs (${urls.length})`,
+                            items: urls,
+                            cls: "url",
+                            type: "url",
+                        },
+                        {
+                            id: `ioc-hashes-${renderId}`,
+                            label: `Hashes (${hashes.length})`,
+                            items: hashes,
+                            cls: "hash",
+                            type: "hash",
+                        },
+                    ];
+                    const tabBar = tabs
+                        .map(
+                            (t, i) =>
+                                `<button class="ioc-tab${i === 0 ? " active" : ""}" onclick="switchIocTab('${t.id}',this)">${t.label}</button>`,
+                        )
+                        .join("");
+                    const panels = tabs
+                        .map((t, i) => {
+                            const copyAllText =
+                                t.type === "hash"
+                                    ? hashes.map((h) => h.sha256).join("\n")
+                                    : t.items.join("\n");
+                            let inner = "";
+                            if (t.type === "hash") {
+                                inner = hashes.length
+                                    ? hashes
+                                          .map(
+                                              (h) => `<div class="ioc-item">
               <div style="flex:1">
                 <div class="ioc-fname">${escHtml(h.filename)}</div>
                 <div class="ioc-val hash">${escHtml(h.sha256)}</div>
               </div>
               <button class="copy-btn" data-copy="${escAttr(h.sha256)}" onclick="copyText(this)">Copy</button>
-            </div>`).join('')
-          : '<div class="ioc-empty">No attachment hashes</div>';
-      } else {
-        inner = t.items.length
-          ? t.items.map(v => `<div class="ioc-item">
+            </div>`,
+                                          )
+                                          .join("")
+                                    : '<div class="ioc-empty">No attachment hashes</div>';
+                            } else {
+                                inner = t.items.length
+                                    ? t.items
+                                          .map(
+                                              (v) => `<div class="ioc-item">
               <span class="ioc-val ${t.cls}">${escHtml(v)}</span>
               <button class="copy-btn" data-copy="${escAttr(v)}" onclick="copyText(this)">Copy</button>
-            </div>`).join('')
-          : `<div class="ioc-empty">No ${t.type}s found</div>`;
-      }
-      const hasItems = t.type === 'hash' ? hashes.length > 0 : t.items.length > 0;
-      const copyAllBtn = hasItems
-        ? `<button class="copy-btn copy-all-btn" data-copy="${escAttr(copyAllText)}" onclick="copyText(this)">⎘ Copy All</button>` : '';
-      return `<div class="ioc-panel${i === 0 ? ' active' : ''}" id="${t.id}">
-        ${copyAllBtn ? `<div class="ioc-toolbar">${copyAllBtn}</div>` : ''}
+            </div>`,
+                                          )
+                                          .join("")
+                                    : `<div class="ioc-empty">No ${t.type}s found</div>`;
+                            }
+                            const hasItems =
+                                t.type === "hash"
+                                    ? hashes.length > 0
+                                    : t.items.length > 0;
+                            const copyAllBtn = hasItems
+                                ? `<button class="copy-btn copy-all-btn" data-copy="${escAttr(copyAllText)}" onclick="copyText(this)">⎘ Copy All</button>`
+                                : "";
+                            return `<div class="ioc-panel${i === 0 ? " active" : ""}" id="${t.id}" data-ioc-panel="${t.id}">
+        ${copyAllBtn ? `<div class="ioc-toolbar">${copyAllBtn}</div>` : ""}
         <div class="ioc-list">${inner}</div>
       </div>`;
-    }).join('');
-    sections.push({
-      title: 'IOC — IPs / Domains / URLs / Hashes', count: iocTotal,
-      html: `<div class="ioc-tabs">${tabBar}</div>${panels}`
-    });
-  }
+                        })
+                        .join("");
+                    sections.push({
+                        title: "IOC — IPs / Domains / URLs / Hashes",
+                        count: iocTotal,
+                        html: `<div class="ioc-tabs">${tabBar}</div>${panels}`,
+                    });
+                }
 
-  // X-Headers
-  if (xHdrs.length) {
-    const byVendor = {};
-    xHdrs.forEach(x => { const v = x.vendor || 'Custom'; (byVendor[v] = byVendor[v] || []).push(x); });
-    let xHtml = '';
-    Object.entries(byVendor).forEach(([vendor, hdrs]) => {
-      xHtml += `<div style="border-bottom:1px solid var(--border)">
+                // X-Headers
+                if (xHdrs.length) {
+                    const byVendor = {};
+                    xHdrs.forEach((x) => {
+                        const v = x.vendor || "Custom";
+                        (byVendor[v] = byVendor[v] || []).push(x);
+                    });
+                    let xHtml = "";
+                    Object.entries(byVendor).forEach(([vendor, hdrs]) => {
+                        xHtml += `<div style="border-bottom:1px solid var(--border)">
         <div class="xhdr-vendor">${escHtml(vendor)}</div>
         <table class="kv-table" style="margin-bottom:4px">`;
-      hdrs.forEach(x => x.values.forEach(v => {
-        xHtml += `<tr><td>${escHtml(x.name)}</td><td>${escHtml(v)}</td></tr>`;
-      }));
-      xHtml += '</table></div>';
-    });
-    sections.push({ title: 'X-Headers', count: xHdrs.length, html: xHtml });
-  }
+                        hdrs.forEach((x) =>
+                            x.values.forEach((v) => {
+                                xHtml += `<tr><td>${escHtml(x.name)}</td><td>${escHtml(v)}</td></tr>`;
+                            }),
+                        );
+                        xHtml += "</table></div>";
+                    });
+                    sections.push({
+                        title: "X-Headers",
+                        count: xHdrs.length,
+                        html: xHtml,
+                    });
+                }
 
-  // Attachments
-  if (attaches.length) {
-    sections.push({
-      title: 'Attachments', count: attaches.length,
-      html: attaches.map(a => `
+                // Attachments
+                if (attaches.length) {
+                    sections.push({
+                        title: "Attachments",
+                        count: attaches.length,
+                        html: attaches
+                            .map(
+                                (a) => `
         <div class="attach-row">
           <div class="attach-icon-wrap">
             <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1372,154 +767,357 @@ function renderFromBackend(d) {
           <span class="attach-name">${escHtml(a.filename)}</span>
           <span class="attach-type">${escHtml(a.content_type)}</span>
           <span class="attach-size">${formatBytes(a.size_bytes)}</span>
-          ${a.sha256 ? `<a class="dl-btn" href="/attachment/${escHtml(a.sha256)}" title="Download as .bin">
+          ${
+              a.sha256
+                  ? `<a class="dl-btn" href="/attachment/${escHtml(a.sha256)}" title="Download as .bin">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M5 2v5M3 5l2 2 2-2"/><path d="M1 8h8"/></svg>
             .bin
-          </a>` : ''}
+          </a>`
+                  : ""
+          }
         </div>
-        ${a.sha256 ? `<div class="attach-hash">SHA-256 <span>${escHtml(a.sha256)}</span></div>` : ''}
-      `).join('')
-    });
-  }
+        ${a.sha256 ? `<div class="attach-hash">SHA-256 <span>${escHtml(a.sha256)}</span></div>` : ""}
+      `,
+                            )
+                            .join(""),
+                    });
+                }
 
-  // HTML Body
-  if (bodies.html_b64) {
-    sections.push({ title: 'HTML Body', count: '', html: buildHtmlViewer(bodies.html_b64) });
-  } else if (bodies.plain) {
-    sections.push({
-      title: 'Plain Body', count: '',
-      html: `<div class="raw-block" style="max-height:400px">${escHtml(bodies.plain)}</div>`
-    });
-  }
+                // HTML Body
+                if (bodies.html_b64) {
+                    sections.push({
+                        title: "HTML Body",
+                        count: "",
+                        html: buildHtmlViewer(bodies.html_b64, renderId),
+                    });
+                } else if (bodies.plain) {
+                    sections.push({
+                        title: "Plain Body",
+                        count: "",
+                        html: `<div class="raw-block" style="max-height:400px">${escHtml(bodies.plain)}</div>`,
+                    });
+                }
 
-  // All Headers raw
-  const rawBlock = allHdrs.map(h =>
-    h.values.map(v => `<span class="h-name">${escHtml(h.name)}</span>: <span class="h-val">${escHtml(v)}</span>`).join('\n')
-  ).join('\n');
-  sections.push({
-    title: 'All Headers (Raw)', count: allHdrs.reduce((s, h) => s + h.values.length, 0),
-    html: `<div class="raw-block">${rawBlock}</div>`
-  });
+                // All Headers raw
+                const rawBlock = allHdrs
+                    .map((h) =>
+                        h.values
+                            .map(
+                                (v) =>
+                                    `<span class="h-name">${escHtml(h.name)}</span>: <span class="h-val">${escHtml(v)}</span>`,
+                            )
+                            .join("\n"),
+                    )
+                    .join("\n");
+                sections.push({
+                    title: "All Headers (Raw)",
+                    count: allHdrs.reduce((s, h) => s + h.values.length, 0),
+                    html: `<div class="raw-block">${rawBlock}</div>`,
+                });
 
-  document.getElementById('sections-container').innerHTML = sections.map((s, i) => `
+                document.getElementById("sections-container").innerHTML =
+                    sections
+                        .map(
+                            (s, i) => `
     <div class="section" id="sec-${i}">
       <div class="section-head" onclick="toggleSection(${i})">
         <div class="section-head-left">
-          <span class="section-indicator"></span>
+          <span class="section-num">${String(i + 1).padStart(2, "0")}</span>
           <span class="section-name">${escHtml(s.title)}
-            ${s.count !== '' ? `<span class="section-count">${s.count}</span>` : ''}
+            ${s.count !== "" ? `<span class="section-count">${s.count}</span>` : ""}
           </span>
         </div>
-        <div class="chevron-wrap">
-          <svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polyline points="2,3 5,7 8,3" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+        <div class="section-head-right">
+          <span class="expand-indicator">OPEN</span>
+          <div class="chevron-wrap">
+            <svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polyline points="2,3 5,7 8,3" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
         </div>
       </div>
       <div class="section-body">${s.html}</div>
-    </div>`).join('');
+    </div>`,
+                        )
+                        .join("");
 
-  document.getElementById('results').classList.add('visible');
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
+                document.getElementById("results").classList.add("visible");
+                document
+                    .getElementById("results")
+                    .scrollIntoView({ behavior: "smooth", block: "start" });
+            }
 
-// ══ HTML viewer ═════════════════════════════════════════════════════════════
-function buildHtmlViewer(html_b64) {
-  return `
-    <div class="html-toolbar" id="html-toolbar">
+            // ══ HTML viewer ═════════════════════════════════════════════════════════════
+            function buildHtmlViewer(html_b64, renderId) {
+                const decoded = b64DecodeUnicode(html_b64);
+                if (!decoded.ok) {
+                    return '<div class="html-error">HTML body could not be decoded</div>';
+                }
+                htmlBodyStore.set(renderId, decoded.value);
+                return `
+    <div class="html-toolbar">
       <span class="html-tb-label">View:</span>
-      <button class="active" onclick="htmlMode('render',this)">Render (Block Remote)</button>
-      <button onclick="htmlMode('source',this)">HTML Source</button>
+      <button class="active" onclick="htmlMode('render',this,${renderId})">Render (Block Remote)</button>
+      <button onclick="htmlMode('source',this,${renderId})">HTML Source</button>
     </div>
-    <div id="html-viewer-body" data-b64="${escAttr(html_b64)}">
-      ${buildSrcdoc(b64DecodeUnicode(html_b64))}
+    <div id="html-viewer-body-${renderId}">
+      ${buildSrcdoc(decoded.value)}
     </div>`;
-}
+            }
 
-function buildSrcdoc(html) {
-  return `<iframe class="html-frame" sandbox="allow-same-origin" srcdoc="${escAttr(html)}"></iframe>`;
-}
+            function buildSrcdoc(html) {
+                const safeHtml = disableRenderedLinks(html);
+                const guard = `<style>
+                  a[data-disabled-href], area[data-disabled-href] {
+                    color: #0645ad !important;
+                    text-decoration: underline !important;
+                    pointer-events: auto !important;
+                    cursor: default !important;
+                  }
+                  a[data-disabled-href]:hover, area[data-disabled-href]:hover {
+                    color: #0b63ce !important;
+                    text-decoration: underline !important;
+                    cursor: not-allowed !important;
+                  }
+                </style>`;
+                const guardedHtml = /<\/head>/i.test(safeHtml)
+                    ? safeHtml.replace(/<\/head>/i, `${guard}</head>`)
+                    : `${guard}${safeHtml}`;
+                return `<iframe class="html-frame" sandbox="allow-same-origin" onload="wireRenderedLinkCopy(this)" srcdoc="${escAttr(guardedHtml)}"></iframe>`;
+            }
 
-function htmlMode(mode, btn) {
-  document.querySelectorAll('#html-toolbar button').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  const body = document.getElementById('html-viewer-body');
-  const b64  = body.getAttribute('data-b64');
-  const raw  = b64DecodeUnicode(b64 || '');
-  if (mode === 'source') {
-    body.innerHTML = `<div class="html-source">${syntaxHighlightHtml(raw)}</div>`;
-  } else {
-    body.innerHTML = buildSrcdoc(raw);
-  }
-  body.setAttribute('data-b64', b64);
-}
+            function wireRenderedLinkCopy(frame) {
+                try {
+                    const doc = frame.contentDocument;
+                    if (!doc || doc.__linkCopyReady) return;
+                    doc.__linkCopyReady = true;
+                    doc.addEventListener("contextmenu", (event) => {
+                        const link = event.target.closest(
+                            "a[data-disabled-href], area[data-disabled-href]",
+                        );
+                        if (!link) return;
+                        event.preventDefault();
+                        copyUrlToClipboard(link.dataset.disabledHref || "");
+                    });
+                } catch {
+                    showCopyToast("Could not read link");
+                }
+            }
 
-// ══ HTML syntax highlighter ══════════════════════════════════════════════════
-function syntaxHighlightHtml(raw) {
-  let safe = escHtml(raw);
-  safe = safe.replace(/(&lt;!DOCTYPE[^&]*&gt;)/gi, '<span class="hl-doctype">$1</span>');
-  safe = safe.replace(/(&lt;!--[\s\S]*?--&gt;)/g,  '<span class="hl-cmt">$1</span>');
-  return safe.replace(/(&lt;\/?[a-z0-9]+)(.*?)(&gt;)/gi, (_, tagStart, middle, tagEnd) => {
-    const hiAttrs = middle.replace(/([a-z-]+)=(&quot;.*?&quot;|&#39;.*?&#39;)/gi,
-      ' <span class="hl-attr">$1</span>=<span class="hl-val">$2</span>');
-    return `<span class="hl-tag">${tagStart}</span>${hiAttrs}<span class="hl-tag">${tagEnd}</span>`;
-  });
-}
+            function copyUrlToClipboard(url) {
+                if (!url) {
+                    showCopyToast("No URL found");
+                    return;
+                }
+                const done = () => showCopyToast("Link copied");
+                const fail = () => showCopyToast("Copy failed");
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(done).catch(fail);
+                    return;
+                }
+                try {
+                    const ta = document.createElement("textarea");
+                    ta.value = url;
+                    ta.style.position = "fixed";
+                    ta.style.opacity = "0";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(ta);
+                    done();
+                } catch {
+                    fail();
+                }
+            }
 
-// ══ MIME tree ════════════════════════════════════════════════════════════════
-function renderMimeNode(node) {
-  const fn    = node.filename ? `<span class="mime-fn">📎 ${escHtml(node.filename)}</span>` : '';
-  const dis   = node.content_disposition ? `<span class="mime-dis">[${escHtml(node.content_disposition)}]</span>` : '';
-  const enc   = node.content_transfer_encoding ? `<span class="mime-enc">${escHtml(node.content_transfer_encoding)}</span>` : '';
-  const trunc = node.truncated ? '<span style="color:var(--warn);font-size:10px"> [truncated]</span>' : '';
-  let html = `<div class="mime-node"><span class="mime-type">${escHtml(node.content_type)}</span>${dis}${fn}${enc}${trunc}`;
-  if (node.children && node.children.length) html += node.children.map(renderMimeNode).join('');
-  return html + '</div>';
-}
+            function showCopyToast(message) {
+                let toast = document.getElementById("copy-toast");
+                if (!toast) {
+                    toast = document.createElement("div");
+                    toast.id = "copy-toast";
+                    toast.className = "copy-toast";
+                    document.body.appendChild(toast);
+                }
+                toast.textContent = message;
+                toast.classList.add("visible");
+                clearTimeout(showCopyToast.timer);
+                showCopyToast.timer = setTimeout(() => {
+                    toast.classList.remove("visible");
+                }, 1600);
+            }
 
-// ══ IOC tab switching ════════════════════════════════════════════════════════
-function switchIocTab(id, btn) {
-  const body = btn.closest('.section-body');
-  body.querySelectorAll('.ioc-tab').forEach(b => b.classList.remove('active'));
-  body.querySelectorAll('.ioc-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById(id).classList.add('active');
-}
+            function disableRenderedLinks(html) {
+                try {
+                    const doc = new DOMParser().parseFromString(
+                        String(html),
+                        "text/html",
+                    );
+                    doc.querySelectorAll("a[href], area[href]").forEach((el) => {
+                        const href = el.getAttribute("href") || "";
+                        el.setAttribute("data-disabled-href", href);
+                        el.setAttribute("title", href);
+                        el.setAttribute("aria-disabled", "true");
+                        el.removeAttribute("href");
+                    });
+                    return "<!doctype html>\n" + doc.documentElement.outerHTML;
+                } catch {
+                    return String(html);
+                }
+            }
 
-// ══ Copy with fallback ═══════════════════════════════════════════════════════
-function copyText(btn) {
-  const text = btn.getAttribute('data-copy') || '';
-  const orig = btn.textContent;
-  const ok  = () => { btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500); };
-  const err = () => { btn.textContent = 'Failed!'; setTimeout(() => { btn.textContent = orig; }, 1500); };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(ok).catch(err);
-  } else {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-      document.body.removeChild(ta); ok();
-    } catch { err(); }
-  }
-}
+            function htmlMode(mode, btn, renderId) {
+                const toolbar = btn ? btn.closest(".html-toolbar") : null;
+                if (toolbar)
+                    toolbar
+                        .querySelectorAll("button")
+                        .forEach((b) => b.classList.remove("active"));
+                if (btn) btn.classList.add("active");
+                const body = document.getElementById(
+                    `html-viewer-body-${renderId}`,
+                );
+                const raw = htmlBodyStore.get(renderId);
+                if (!body || raw == null) return;
+                if (mode === "source") {
+                    body.innerHTML = `<div class="html-source">${syntaxHighlightHtml(raw)}</div>`;
+                } else {
+                    body.innerHTML = buildSrcdoc(raw);
+                }
+            }
 
-// ══ Utilities ════════════════════════════════════════════════════════════════
-function b64DecodeUnicode(b64) {
-  try {
-    const binary = atob(b64);
-    const bytes  = Uint8Array.from(binary, c => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
-  } catch { return ''; }
-}
+            // ══ HTML syntax highlighter ══════════════════════════════════════════════════
+            function syntaxHighlightHtml(raw) {
+                const tokenRe =
+                    /(<!--[\s\S]*?-->|<!DOCTYPE[^>]*>|<\/?[a-z0-9:-]+(?:\s+[^<>]*?)?>)/gi;
+                let out = "";
+                let last = 0;
+                String(raw).replace(tokenRe, (token, _match, offset) => {
+                    out += escHtml(String(raw).slice(last, offset));
+                    const safe = escHtml(token);
+                    if (/^<!--/.test(token)) {
+                        out += `<span class="hl-cmt">${safe}</span>`;
+                    } else if (/^<!DOCTYPE/i.test(token)) {
+                        out += `<span class="hl-doctype">${safe}</span>`;
+                    } else {
+                        out += safe.replace(
+                            /^(&lt;\/?[a-z0-9:-]+)([\s\S]*?)(&gt;)$/i,
+                            (_, tagStart, attrs, tagEnd) => {
+                                const hiAttrs = attrs.replace(
+                                    /([a-z_:][-a-z0-9_:.]*)=(&quot;.*?&quot;|&#39;.*?&#39;|[^\s&]+)?/gi,
+                                    '<span class="hl-attr">$1</span>=<span class="hl-val">$2</span>',
+                                );
+                                return `<span class="hl-tag">${tagStart}</span>${hiAttrs}<span class="hl-tag">${tagEnd}</span>`;
+                            },
+                        );
+                    }
+                    last = offset + token.length;
+                    return token;
+                });
+                out += escHtml(String(raw).slice(last));
+                return out;
+            }
 
-function escHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+            // ══ MIME tree ════════════════════════════════════════════════════════════════
+            function renderMimeNode(node) {
+                const fn = node.filename
+                    ? `<span class="mime-fn">📎 ${escHtml(node.filename)}</span>`
+                    : "";
+                const dis = node.content_disposition
+                    ? `<span class="mime-dis">[${escHtml(node.content_disposition)}]</span>`
+                    : "";
+                const enc = node.content_transfer_encoding
+                    ? `<span class="mime-enc">${escHtml(node.content_transfer_encoding)}</span>`
+                    : "";
+                const trunc = node.truncated
+                    ? '<span style="color:var(--warn);font-size:10px"> [truncated]</span>'
+                    : "";
+                let html = `<div class="mime-node"><span class="mime-type">${escHtml(node.content_type)}</span>${dis}${fn}${enc}${trunc}`;
+                if (node.children && node.children.length)
+                    html += node.children.map(renderMimeNode).join("");
+                return html + "</div>";
+            }
 
-function escAttr(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-</script>
-</body>
+            // ══ IOC tab switching ════════════════════════════════════════════════════════
+            function switchIocTab(id, btn) {
+                const body = btn.closest(".section-body");
+                body.querySelectorAll(".ioc-tab").forEach((b) =>
+                    b.classList.remove("active"),
+                );
+                body.querySelectorAll(".ioc-panel").forEach((p) =>
+                    p.classList.remove("active"),
+                );
+                btn.classList.add("active");
+                const panel = Array.from(
+                    body.querySelectorAll(".ioc-panel"),
+                ).find((p) => p.dataset.iocPanel === id);
+                if (panel) panel.classList.add("active");
+            }
+
+            // ══ Copy with fallback ═══════════════════════════════════════════════════════
+            function copyText(btn) {
+                const text = btn.getAttribute("data-copy") || "";
+                const orig = btn.textContent;
+                const ok = () => {
+                    btn.textContent = "Copied!";
+                    btn.classList.add("copied");
+                    setTimeout(() => {
+                        btn.textContent = orig;
+                        btn.classList.remove("copied");
+                    }, 1500);
+                };
+                const err = () => {
+                    btn.textContent = "Failed!";
+                    setTimeout(() => {
+                        btn.textContent = orig;
+                    }, 1500);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(ok).catch(err);
+                } else {
+                    try {
+                        const ta = document.createElement("textarea");
+                        ta.value = text;
+                        ta.style.position = "fixed";
+                        ta.style.opacity = "0";
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(ta);
+                        ok();
+                    } catch {
+                        err();
+                    }
+                }
+            }
+
+            // ══ Utilities ════════════════════════════════════════════════════════════════
+            function b64DecodeUnicode(b64) {
+                try {
+                    const binary = atob(b64);
+                    const bytes = Uint8Array.from(binary, (c) =>
+                        c.charCodeAt(0),
+                    );
+                    return { ok: true, value: new TextDecoder().decode(bytes) };
+                } catch {
+                    return { ok: false, value: "" };
+                }
+            }
+
+            function escHtml(s) {
+                return String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#39;");
+            }
+
+            function escAttr(s) {
+                return String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#39;")
+                    .replace(/`/g, "&#96;");
+            }
+        </script>
+    </body>
 </html>
