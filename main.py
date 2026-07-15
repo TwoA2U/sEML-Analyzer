@@ -25,9 +25,14 @@ import os
 import threading
 from email.header import decode_header, make_header
 from email.utils import getaddresses, parseaddr, parsedate_to_datetime
+from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import urlparse
 
-import re2 as re
+try:
+    import re2 as re
+except ImportError:
+    import re
 from flask import Flask, jsonify, request, Response
 from werkzeug.utils import secure_filename
 
@@ -78,10 +83,31 @@ def _check_origin() -> bool:
     host    = request.host
     if not origin and not referer:
         return True
-    allowed = f"http://{host}"
-    if origin  and not (origin  == allowed or origin.startswith(allowed + "/")):
+
+    def trusted(value: str) -> bool:
+        if not value:
+            return True
+        parsed = urlparse(value)
+        if not parsed.scheme or not parsed.netloc:
+            return False
+        expected_scheme = request.scheme
+        if parsed.scheme != expected_scheme:
+            return False
+        if parsed.netloc == host:
+            return True
+        origin_host = parsed.hostname or ""
+        request_host = (urlparse(f"//{request.host}").hostname or "").lower()
+        loopback = {"localhost", "127.0.0.1", "::1"}
+        request_port = request.environ.get("SERVER_PORT")
+        return (
+            origin_host.lower() in loopback
+            and request_host in loopback
+            and str(parsed.port or "") == str(request_port or "")
+        )
+
+    if origin and not trusted(origin):
         return False
-    if referer and not (referer == allowed or referer.startswith(allowed + "/")):
+    if referer and not trusted(referer):
         return False
     return True
 
@@ -91,7 +117,9 @@ def _check_origin() -> bool:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _safe_decode(value: Any) -> str:
-    return "" if value is None else str(value)
+    if value is None:
+        return ""
+    return str(value).replace("\r", "").replace("\n", " ").strip()
 
 
 def _decode_header_value(raw: Any) -> str:
@@ -138,7 +166,7 @@ def _safe_content_disposition(filename: str) -> str:
 # Authentication
 # ═══════════════════════════════════════════════════════════════════════════════
 
-_AUTH_RE = re.compile(r"(?i)\b(spf|dkim|dmarc|arc)\s*=\s*([a-z]+)")
+_AUTH_RE = re.compile(r"(?i)(^|[;\s])(spf|dkim|dmarc|arc)\s*=\s*([a-z]+)")
 
 
 def _parse_auth_results(raw: str) -> list[dict]:
@@ -147,10 +175,10 @@ def _parse_auth_results(raw: str) -> list[dict]:
     normalized = " ".join(raw.split())
     results    = []
     for m in _AUTH_RE.finditer(normalized):
-        start = m.start()
+        start = m.start(2)
         results.append({
-            "name":   m.group(1).upper(),
-            "result": m.group(2).lower(),
+            "name":   m.group(2).upper(),
+            "result": m.group(3).lower(),
             "clause": normalized[start: start + 150].strip(),
         })
     return results
@@ -196,6 +224,8 @@ def _parse_one_received(raw: str) -> dict:
 def _parse_received_hops(received_list: list[str]) -> list[dict]:
     parsed       = [_parse_one_received(r) for r in received_list]
     oldest_first = list(reversed(parsed))
+    for hop in oldest_first:
+        hop["delay_seconds"] = None
     for i in range(1, len(oldest_first)):
         p, c = oldest_first[i - 1]["_dt"], oldest_first[i]["_dt"]
         if p and c:
@@ -209,9 +239,21 @@ def _parse_received_hops(received_list: list[str]) -> list[dict]:
 # Attachments
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _walk_mime_parts(msg: email.message.Message, depth: int = 0):
+    yield msg, depth
+    if depth >= _MAX_MIME_DEPTH or not msg.is_multipart():
+        return
+    payload = msg.get_payload()
+    if not isinstance(payload, list):
+        return
+    for part in payload:
+        if isinstance(part, email.message.Message):
+            yield from _walk_mime_parts(part, depth + 1)
+
+
 def _parse_attachments(msg: email.message.Message) -> list[dict]:
     attachments = []
-    for part in msg.walk():
+    for part, _depth in _walk_mime_parts(msg):
         if (part.get_content_disposition() or "").lower() != "attachment":
             continue
         filename = _decode_header_value(part.get_filename() or "")
@@ -243,6 +285,48 @@ _DOMAIN_RE = re.compile(r"(?i)\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]
 _URL_RE    = re.compile(r"(?i)https?://[^\s'\"<>)\]]+")
 
 
+class _HtmlIocTextExtractor(HTMLParser):
+    def __init__(self, max_chars: int) -> None:
+        super().__init__(convert_charrefs=True)
+        self.max_chars = max_chars
+        self.parts: list[str] = []
+        self.links: list[str] = []
+
+    def _append(self, value: str) -> None:
+        if not value or self.length >= self.max_chars:
+            return
+        remaining = self.max_chars - self.length
+        self.parts.append(value[:remaining])
+
+    @property
+    def length(self) -> int:
+        return sum(len(p) for p in self.parts)
+
+    def handle_data(self, data: str) -> None:
+        self._append(data)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if name.lower() in {"href", "src", "action"} and value:
+                self.links.append(value)
+
+    def text(self) -> str:
+        return " ".join(" ".join(self.parts).split())
+
+
+def _html_ioc_text(html: str | None) -> str:
+    if not html:
+        return ""
+    parser = _HtmlIocTextExtractor(_MAX_HTML_BODY_BYTES)
+    try:
+        parser.feed(html[:_MAX_HTML_BODY_BYTES])
+        parser.close()
+        link_text = " ".join(v for v in parser.links if v.lower().startswith(("http://", "https://")))
+        return f"{parser.text()} {link_text}".strip()
+    except Exception:
+        return ""
+
+
 def _is_public_ip(ip: str) -> bool:
     try:
         obj = ipaddress.ip_address(ip)
@@ -261,7 +345,7 @@ def _extract_iocs(all_headers: list[dict], bodies: dict, attachments: list[dict]
             ips.update(_IPV4_RE.findall(val))
             domains.update(d.lower() for d in _DOMAIN_RE.findall(val))
 
-    for body_text in [bodies.get("plain") or "", bodies.get("html") or ""]:
+    for body_text in [bodies.get("plain") or "", _html_ioc_text(bodies.get("html"))]:
         urls.update(u.rstrip(".,;)>") for u in _URL_RE.findall(body_text))
         domains.update(d.lower() for d in _DOMAIN_RE.findall(body_text))
 
@@ -307,7 +391,7 @@ def _mime_structure(msg: email.message.Message, depth: int = 0) -> dict:
 
 def _extract_bodies(msg: email.message.Message) -> dict:
     plain = html = None
-    for part in msg.walk():
+    for part, _depth in _walk_mime_parts(msg):
         ct  = part.get_content_type()
         dis = (part.get_content_disposition() or "").lower()
         if dis == "attachment":
@@ -379,9 +463,8 @@ def _build_x_headers(all_headers: list[dict]) -> list[dict]:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _parse_eml(raw: str | bytes) -> dict:
-    global _attachment_store
     with _store_lock:
-        _attachment_store = {}
+        _attachment_store.clear()
 
     raw_bytes = raw.encode("utf-8", errors="replace") if isinstance(raw, str) else raw
     msg = email.message_from_bytes(raw_bytes, policy=email.policy.compat32)
@@ -430,6 +513,7 @@ def _parse_eml(raw: str | bytes) -> dict:
 
     x_headers = _build_x_headers(all_headers)
     iocs      = _extract_iocs(all_headers, bodies, attachments)
+    response_bodies = {"plain": bodies["plain"], "html_b64": bodies["html_b64"]}
 
     from_domain  = from_addr.split("@")[-1].lower()  if "@" in from_addr  else ""
     reply_domain = reply_addr.split("@")[-1].lower() if "@" in reply_addr else ""
@@ -458,7 +542,7 @@ def _parse_eml(raw: str | bytes) -> dict:
         "received_chain": hops,
         "attachments":    attachments,
         "mime_structure": mime_tree,
-        "bodies":         bodies,
+        "bodies":         response_bodies,
         "x_headers":      x_headers,
         "iocs":           iocs,
         "all_headers":    all_headers,
@@ -484,7 +568,8 @@ def _parse_eml(raw: str | bytes) -> dict:
 @app.route("/")
 def index() -> Response:
     try:
-        return Response(open(_FRONTEND_PATH, encoding="utf-8").read(), mimetype="text/html")
+        with open(_FRONTEND_PATH, encoding="utf-8") as f:
+            return Response(f.read(), mimetype="text/html")
     except FileNotFoundError:
         return Response("<h2>eml-analyzer.html not found</h2>", status=404, mimetype="text/html")
 
